@@ -1,1 +1,0 @@
-# Movement planning course study
