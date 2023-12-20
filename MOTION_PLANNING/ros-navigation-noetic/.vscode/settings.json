@@ -14,15 +14,15 @@
             "icon": "check",
             "type": "tag"
         },
-        "FIXME": {
-            "foreground": "#ff0000",
-            "iconColour": "#ff0000",
-        },
         "STEP": {
             // "icon": "check",
             // "type": "tag",
             "foreground": "#00ff6e",
             "iconColour": "#00ff44",
+        },        
+        "FIXME": {
+            "foreground": "#ff0000",
+            "iconColour": "#ff0000",
         }
     }
     // foreground 前景色

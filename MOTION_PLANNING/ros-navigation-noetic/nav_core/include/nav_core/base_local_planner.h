@@ -62,7 +62,7 @@ namespace nav_core {
        */
       virtual bool isGoalReached() = 0;
 
-      /**
+      /** //TODO: 获得全局规划器所规划出来的路径
        * @brief  更新要跟随的全局路径
        * @param plan 更新的全局路径
        * @return True 代表更新成功

@@ -47,7 +47,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 namespace move_base {
-  //TODO 在move_base构造函数中,会将Navigation框架中间方框里的全部初始化
+  //TODO 在move_base构造函数中,会将Navigation框架中间方框里的全部初始化，所有插件全部设置完成
   MoveBase::MoveBase(tf2_ros::Buffer& tf) :
     tf_(tf),
     as_(NULL),
@@ -135,7 +135,7 @@ namespace move_base {
 
     // 创建局部规划器
     try {
-      tc_ = blp_loader_.createInstance(local_planner);
+      tc_ = blp_loader_.createInstance(local_planner);//加载局部规划器实例
       ROS_INFO("Created local_planner %s", local_planner.c_str());
       tc_->initialize(blp_loader_.getName(local_planner), &tf_, controller_costmap_ros_);
     } catch (const pluginlib::PluginlibException& ex) {
@@ -337,7 +337,7 @@ namespace move_base {
   }
 
   bool MoveBase::clearCostmapsService(std_srvs::Empty::Request &req, std_srvs::Empty::Response &resp){
-    //clear the costmaps
+    //clear the costmaps清除局部代价地图和全局代价地图
     boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock_controller(*(controller_costmap_ros_->getCostmap()->getMutex()));
     controller_costmap_ros_->resetLayers();
 
@@ -471,8 +471,9 @@ namespace move_base {
     tc_.reset();
   }
 
+  //TODO 这里的makePlan是move_base的成员函数
   bool MoveBase::makePlan(const geometry_msgs::PoseStamped& goal, std::vector<geometry_msgs::PoseStamped>& plan){
-    boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(planner_costmap_ros_->getCostmap()->getMutex()));
+    boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(planner_costmap_ros_->getCostmap()->getMutex()));//加锁
 
     // 清空路径
     plan.clear();
@@ -493,7 +494,7 @@ namespace move_base {
     const geometry_msgs::PoseStamped& start = global_pose;
 
     // 如果全局规划器失败了或者返回了一个零长度的路径，规划失败
-    if(!planner_->makePlan(start, goal, plan) || plan.empty()){
+    if(!planner_->makePlan(start, goal, plan) || plan.empty()){//TODO 这里的makePlan是全局规划器的成员函数
       ROS_DEBUG_NAMED("move_base","Failed to find a  plan to point (%.2f, %.2f)", goal.pose.position.x, goal.pose.position.y);
       return false;
     }
@@ -571,7 +572,7 @@ namespace move_base {
     ros::NodeHandle n;
     ros::Timer timer;
     bool wait_for_wake = false;
-    boost::unique_lock<boost::recursive_mutex> lock(planner_mutex_);//加锁(不同变量对同一个线程进行访问一定要加锁)
+    boost::unique_lock<boost::recursive_mutex> lock(planner_mutex_);//加锁（另外的线程）(不同线程对同一变量修改一定要加锁)
     while(n.ok()){
       // 确认是否要运行路径规划器(这里已经加锁)
       while(wait_for_wake || !runPlanner_){
@@ -591,8 +592,8 @@ namespace move_base {
       ROS_DEBUG_NAMED("move_base_plan_thread","Planning...");
 
       // 运行路径规划器，它的主要函数是makePlan
-      planner_plan_->clear();//STEP 首先,清除用于存放全局规划路径的容器
-      bool gotPlan = n.ok() && makePlan(temp_goal, *planner_plan_);
+      planner_plan_->clear();// 首先,清除用于存放全局规划路径的容器
+      bool gotPlan = n.ok() && makePlan(temp_goal, *planner_plan_);//计算的全局规划会存在planner_plan_容器中
 
       if(gotPlan){
         // 如果规划出路径则更新相应路径，并将state_设成CONTROLLING状态
@@ -600,11 +601,11 @@ namespace move_base {
         //pointer swap the plans under mutex (the controller will pull from latest_plan_)
         std::vector<geometry_msgs::PoseStamped>* temp_plan = planner_plan_;
 
-        lock.lock();
+        lock.lock();//加锁,对应下面解锁
         planner_plan_ = latest_plan_;
         // 将最新的全局路径放到latest_plan_中，
         // 其在MoveBase::executeCycle中被传递到controller_plan_中，用锁来进行同步
-        latest_plan_ = temp_plan;
+        latest_plan_ = temp_plan;//这里的全局路径:planner_plan_ -> temp_plan -> latest_plan_
         last_valid_plan_ = ros::Time::now();
         planning_retries_ = 0;
         new_global_plan_ = true;
@@ -613,10 +614,10 @@ namespace move_base {
 
         // 如果没有到达目标点，进入CONTROLLING状态
         if(runPlanner_)
-          state_ = CONTROLLING;
+          state_ = CONTROLLING;//CONTROLLING状态就是为了之后的局部规划
         if(planner_frequency_ <= 0)
           runPlanner_ = false;
-        lock.unlock();
+        lock.unlock();//解锁
       }
       // 如果没有算路径同时state_为PLANNING状态
       else if(state_==PLANNING){
@@ -639,7 +640,7 @@ namespace move_base {
           state_ = CLEARING;
           runPlanner_ = false;  // proper solution for issue #523
           publishZeroVelocity();
-          recovery_trigger_ = PLANNING_R;
+          recovery_trigger_ = PLANNING_R;//PLANNING_R: 因为全局规划的异常,导致的恢复行为
         }
 
         lock.unlock();
@@ -650,17 +651,17 @@ namespace move_base {
 
       // 如果还没到规划周期则定时器睡眠，在定时器中断中通过planner_cond_唤醒，这里规划周期为0
       if(planner_frequency_ > 0){
-        ros::Duration sleep_time = (start_time + ros::Duration(1.0/planner_frequency_)) - ros::Time::now();
+        ros::Duration sleep_time = (start_time + ros::Duration(1.0/planner_frequency_)) - ros::Time::now();//上述程序执行时间小于设定的规划周期,则睡眠等待
         if (sleep_time > ros::Duration(0.0)){
           wait_for_wake = true;
-          timer = n.createTimer(sleep_time, &MoveBase::wakePlanner, this);
+          timer = n.createTimer(sleep_time, &MoveBase::wakePlanner, this);//wakePlanner唤醒线程,createTimer是节点句柄的一个子函数,以固定的时间对回调函数进行调用
         }
       }
     }
   }
 
   // 控制的主要函数
-  void MoveBase::executeCb(const move_base_msgs::MoveBaseGoalConstPtr& move_base_goal)
+  void MoveBase::executeCb(const move_base_msgs::MoveBaseGoalConstPtr& move_base_goal)//TODO 调用局部规划
   {
     // 如果目标点朝向的四元数不合法，退出该函数
     if(!isQuaternionValid(move_base_goal->target_pose.pose.orientation)){
@@ -673,13 +674,13 @@ namespace move_base {
     // 发布零速度
     publishZeroVelocity();
     // 现在我们有了目标点，开始路径规划
-    boost::unique_lock<boost::recursive_mutex> lock(planner_mutex_);
+    boost::unique_lock<boost::recursive_mutex> lock(planner_mutex_);//进行线程保护,准备进行规划
     planner_goal_ = goal;
     // 全局规划标志位设为真
     runPlanner_ = true;
     // 由于全局规划器线程绑定的函数plannerThread()里有planner_cond_对象的wait函数，在这里调用notify启动全局规划器线程，进行全局路径规划
     // 唤醒等待条件变量的一个线程：即调用planner_cond_.wait()的MoveBase::planThread()
-    planner_cond_.notify_one();
+    planner_cond_.notify_one();//唤醒全局规划的线程
     lock.unlock();
 
     current_goal_pub_.publish(goal);
@@ -723,12 +724,12 @@ namespace move_base {
           // 有了新的可行目标后，新目标将会被执行，没有东西会被关闭
           move_base_msgs::MoveBaseGoal new_goal = *as_->acceptNewGoal();
 
-          if(!isQuaternionValid(new_goal.target_pose.pose.orientation)){
+          if(!isQuaternionValid(new_goal.target_pose.pose.orientation)){//对新的目标进行四元数朝向判断
             as_->setAborted(move_base_msgs::MoveBaseResult(), "Aborting on goal because it was sent with an invalid quaternion");
             return;
           }
 
-          goal = goalToGlobalFrame(new_goal.target_pose);
+          goal = goalToGlobalFrame(new_goal.target_pose);//把新目标转换到全局坐标系
 
           // 为下个执行循环重置状态
           recovery_index_ = 0;
@@ -738,7 +739,7 @@ namespace move_base {
           lock.lock();
           planner_goal_ = goal;
           runPlanner_ = true;
-          planner_cond_.notify_one();
+          planner_cond_.notify_one();//有了新目标,全局路径规划线程唤醒
           lock.unlock();
 
           // 发布该目标点给rviz
@@ -751,7 +752,7 @@ namespace move_base {
           last_oscillation_reset_ = ros::Time::now();
           planning_retries_ = 0;
         }
-        else {
+        else {//如果没有进来新的目标点,也就是任务被取消
           // 上述的case 2： 如果任务被取消，重置导航各个部分的状态
           resetState();
 
@@ -830,7 +831,7 @@ namespace move_base {
   }
 
   bool MoveBase::executeCycle(geometry_msgs::PoseStamped& goal){
-    boost::recursive_mutex::scoped_lock ecl(configuration_mutex_);
+    boost::recursive_mutex::scoped_lock ecl(configuration_mutex_);//加锁进行保护
     // 用于发布速度命令
     geometry_msgs::Twist cmd_vel;
 
@@ -902,7 +903,7 @@ namespace move_base {
       // step x.x 如果是路径规划状态，计算路径
       case PLANNING:
         {
-          // 加锁，唤醒路径规划器线程
+          // 加锁，唤醒全局路径规划器线程
           boost::recursive_mutex::scoped_lock lock(planner_mutex_);
           runPlanner_ = true;
           planner_cond_.notify_one();
@@ -946,7 +947,7 @@ namespace move_base {
         {
          boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(controller_costmap_ros_->getCostmap()->getMutex()));
 
-        if(tc_->computeVelocityCommands(cmd_vel)){
+        if(tc_->computeVelocityCommands(cmd_vel)){//TODO 调用局部规划器成员函数computeVelocityCommands,计算出速度命令cmd_vel
           // 如果局部轨迹规划成功
           ROS_DEBUG_NAMED( "move_base", "Got a valid command from the local planner: %.3lf, %.3lf, %.3lf",
                            cmd_vel.linear.x, cmd_vel.linear.y, cmd_vel.angular.z );
@@ -1001,7 +1002,7 @@ namespace move_base {
 
           recovery_status_pub_.publish(msg);
 
-          recovery_behaviors_[recovery_index_]->runBehavior();
+          recovery_behaviors_[recovery_index_]->runBehavior();//TODO 调用对应的恢复行为,调用他们的成员函数runBehavior
 
           // 更新震荡的计时时间
           last_oscillation_reset_ = ros::Time::now();
@@ -1150,7 +1151,7 @@ namespace move_base {
       n.setParam("aggressive_reset/reset_distance", circumscribed_radius_ * 4);
 
       // step 1 加载清除代价地图的恢复行为
-      boost::shared_ptr<nav_core::RecoveryBehavior> cons_clear(recovery_loader_.createInstance("clear_costmap_recovery/ClearCostmapRecovery"));
+      boost::shared_ptr<nav_core::RecoveryBehavior> cons_clear(recovery_loader_.createInstance("clear_costmap_recovery/ClearCostmapRecovery"));//加载恢复行为的插件
       cons_clear->initialize("conservative_reset", &tf_, planner_costmap_ros_, controller_costmap_ros_);
       recovery_behavior_names_.push_back("conservative_reset");
       recovery_behaviors_.push_back(cons_clear);
