@@ -44,7 +44,7 @@
 #include <tf2/convert.h>
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
+//TODO: costmap_2d_ros只是作为桥梁调用其他接口实现功能
 using namespace std;
 
 namespace costmap_2d
@@ -485,18 +485,18 @@ void Costmap2DROS::updateMap()
   {
     // get global pose
     geometry_msgs::PoseStamped pose;
-    if (getRobotPose (pose))
+    if (getRobotPose (pose))//如果机器人的位姿可以获得
     {
       double x = pose.pose.position.x,
              y = pose.pose.position.y,
              yaw = tf2::getYaw(pose.pose.orientation);
 
-      layered_costmap_->updateMap(x, y, yaw);
+      layered_costmap_->updateMap(x, y, yaw);//取出机器人xy,yaw用来更新,这里的updateMap是LayeredCostmap的成员函数,Costmap2DROS::updateMap()只是一个壳而已
 
       geometry_msgs::PolygonStamped footprint;
       footprint.header.frame_id = global_frame_;
       footprint.header.stamp = ros::Time::now();
-      transformFootprint(x, y, yaw, padded_footprint_, footprint);
+      transformFootprint(x, y, yaw, padded_footprint_, footprint);//转换footprint,再发布出去
       footprint_pub_.publish(footprint);
 
       initialized_ = true;
