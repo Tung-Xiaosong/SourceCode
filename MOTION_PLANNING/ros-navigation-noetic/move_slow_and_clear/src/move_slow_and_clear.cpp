@@ -37,7 +37,7 @@
 #include <move_slow_and_clear/move_slow_and_clear.h>
 #include <pluginlib/class_list_macros.h>
 #include <costmap_2d/obstacle_layer.h>
-
+//TODO: 这里的清除代价地图,是将范围的代价值内置为 freespace 自由空间 
 PLUGINLIB_EXPORT_CLASS(move_slow_and_clear::MoveSlowAndClear, nav_core::RecoveryBehavior)
 
 namespace move_slow_and_clear
@@ -50,7 +50,7 @@ namespace move_slow_and_clear
     delete remove_limit_thread_;
   }
 
-  void MoveSlowAndClear::initialize (std::string n, tf2_ros::Buffer* tf,
+  void MoveSlowAndClear::initialize (std::string n, tf2_ros::Buffer* tf,//初始化全局和局部代价地图
       costmap_2d::Costmap2DROS* global_costmap,
       costmap_2d::Costmap2DROS* local_costmap)
   {
@@ -85,16 +85,16 @@ namespace move_slow_and_clear
       return;
     }
     ROS_WARN("Move slow and clear recovery behavior started.");
-    geometry_msgs::PoseStamped global_pose, local_pose;
+    geometry_msgs::PoseStamped global_pose, local_pose;//全局当前位姿,局部当前位姿
     global_costmap_->getRobotPose(global_pose);
     local_costmap_->getRobotPose(local_pose);
 
-    std::vector<geometry_msgs::Point> global_poly, local_poly;
+    std::vector<geometry_msgs::Point> global_poly, local_poly;//全局多边形,局部多边形
     geometry_msgs::Point pt;
     // 确定要清除的区域大小
     for(int i = -1; i <= 1; i+=2)
     {
-      pt.x = global_pose.pose.position.x + i * clearing_distance_;
+      pt.x = global_pose.pose.position.x + i * clearing_distance_;//以机器人当前坐标为中心,画出一个正方形范围
       pt.y = global_pose.pose.position.y + i * clearing_distance_;
       global_poly.push_back(pt);
 
@@ -112,13 +112,13 @@ namespace move_slow_and_clear
     }
 
     // 清除代价地图中特定区域
-    std::vector<boost::shared_ptr<costmap_2d::Layer> >* plugins = global_costmap_->getLayeredCostmap()->getPlugins();
-    for (std::vector<boost::shared_ptr<costmap_2d::Layer> >::iterator pluginp = plugins->begin(); pluginp != plugins->end(); ++pluginp) {
+    std::vector<boost::shared_ptr<costmap_2d::Layer> >* plugins = global_costmap_->getLayeredCostmap()->getPlugins();//获取代价地图中每个层的插件
+    for (std::vector<boost::shared_ptr<costmap_2d::Layer> >::iterator pluginp = plugins->begin(); pluginp != plugins->end(); ++pluginp) {//迭代每一层
             boost::shared_ptr<costmap_2d::Layer> plugin = *pluginp;
-          if(plugin->getName().find("obstacles")!=std::string::npos){
+          if(plugin->getName().find("obstacles")!=std::string::npos){//寻找是否有obstacles这一层
             boost::shared_ptr<costmap_2d::ObstacleLayer> costmap;
             costmap = boost::static_pointer_cast<costmap_2d::ObstacleLayer>(plugin);
-            costmap->setConvexPolygonCost(global_poly, costmap_2d::FREE_SPACE);
+            costmap->setConvexPolygonCost(global_poly, costmap_2d::FREE_SPACE);//将obstacles层中正方形区域更新为 freespace 区域
           }
     }
 
@@ -156,7 +156,7 @@ namespace move_slow_and_clear
     //limit the speed of the robot until it moves a certain distance
     setRobotSpeed(limited_trans_speed_, limited_rot_speed_);
     limit_set_ = true;
-    distance_check_timer_ = private_nh_.createTimer(ros::Duration(0.1), &MoveSlowAndClear::distanceCheck, this);
+    distance_check_timer_ = private_nh_.createTimer(ros::Duration(0.1), &MoveSlowAndClear::distanceCheck, this);//节点句柄中的成员函数createTimer,以10hz的频率调用distanceCheck()
   }
 
   double MoveSlowAndClear::getSqDistance()
@@ -174,7 +174,7 @@ namespace move_slow_and_clear
 
   void MoveSlowAndClear::distanceCheck(const ros::TimerEvent& e)
   {
-    if(limited_distance_ * limited_distance_ <= getSqDistance())
+    if(limited_distance_ * limited_distance_ <= getSqDistance())//移动已经超出了我们限制的距离
     {
       ROS_INFO("Moved far enough, removing speed limit.");
       //have to do this because a system call within a timer cb does not seem to play nice
@@ -183,7 +183,7 @@ namespace move_slow_and_clear
         remove_limit_thread_->join();
         delete remove_limit_thread_;
       }
-      remove_limit_thread_ = new boost::thread(boost::bind(&MoveSlowAndClear::removeSpeedLimit, this));
+      remove_limit_thread_ = new boost::thread(boost::bind(&MoveSlowAndClear::removeSpeedLimit, this));//移除速度限制的线程
 
       distance_check_timer_.stop();
     }

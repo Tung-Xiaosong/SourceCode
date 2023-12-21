@@ -109,10 +109,10 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   // step 4 检查costmap是否需要滑窗
   bool rolling_window, track_unknown_space, always_send_full_costmap;
   private_nh.param("rolling_window", rolling_window, false);
-  private_nh.param("track_unknown_space", track_unknown_space, false);
+  private_nh.param("track_unknown_space", track_unknown_space, false);//true:规划时会避开未知区域,false:规划时可能进入未知区域
   private_nh.param("always_send_full_costmap", always_send_full_costmap, false);
 
-  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space);
+  layered_costmap_ = new LayeredCostmap(global_frame_, rolling_window, track_unknown_space);//构建LayeredCostmap实例
 
   if (!private_nh.hasParam("plugins"))
   {
@@ -124,16 +124,16 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   if (private_nh.hasParam("plugins"))
   {
     XmlRpc::XmlRpcValue my_list;
-    private_nh.getParam("plugins", my_list);
-    for (int32_t i = 0; i < my_list.size(); ++i)
+    private_nh.getParam("plugins", my_list);//加载各层的插件
+    for (int32_t i = 0; i < my_list.size(); ++i)//对每一层进行遍历
     {
-      std::string pname = static_cast<std::string>(my_list[i]["name"]);
+      std::string pname = static_cast<std::string>(my_list[i]["name"]);//获得每一层的名字,类型
       std::string type = static_cast<std::string>(my_list[i]["type"]);
       ROS_INFO("%s: Using plugin \"%s\"", name_.c_str(), pname.c_str());
 
-      copyParentParameters(pname, type, private_nh);
+      copyParentParameters(pname, type, private_nh);//将它的参数拷贝进去
 
-      boost::shared_ptr<Layer> plugin = plugin_loader_.createInstance(type);
+      boost::shared_ptr<Layer> plugin = plugin_loader_.createInstance(type);//创建对应这一层的实例,作为插件
       layered_costmap_->addPlugin(plugin);
       plugin->initialize(layered_costmap_, name + "/" + pname, &tf_);
     }
@@ -160,14 +160,14 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   setUnpaddedRobotFootprint(makeFootprintFromParams(private_nh));
 
   publisher_ = new Costmap2DPublisher(&private_nh, layered_costmap_->getCostmap(), global_frame_, "costmap",
-                                      always_send_full_costmap);
+                                      always_send_full_costmap);//用于可视化
 
   // step 7 这些设置在之后创建新的更新地图线程时会被用到
   stop_updates_ = false;
   initialized_ = true;
   stopped_ = false;
 
-  // step 8 创建检测机器人运动的计时器
+  // step 8 创建检测机器人运动的计时器(检测机器人是否有运动)
   robot_stopped_ = false;
   timer_ = private_nh.createTimer(ros::Duration(.1), &Costmap2DROS::movementCB, this);
   // step 9 开启动态参数配置
@@ -278,7 +278,7 @@ void Costmap2DROS::copyParentParameters(const std::string& plugin_name, const st
 
   if(plugin_type == "costmap_2d::StaticLayer")
   {
-    move_parameter(nh, target_layer, "map_topic", false);
+    move_parameter(nh, target_layer, "map_topic", false);//拷贝参数
     move_parameter(nh, target_layer, "unknown_cost_value", false);
     move_parameter(nh, target_layer, "lethal_cost_threshold", false);
     move_parameter(nh, target_layer, "track_unknown_space", false);
@@ -318,13 +318,13 @@ void Costmap2DROS::checkOldParam(ros::NodeHandle& nh, const std::string &param_n
   }
 }
 
-void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t level)
+void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t level)//输入新的配置
 {
-  transform_tolerance_ = config.transform_tolerance;
-  if (map_update_thread_ != NULL)
+  transform_tolerance_ = config.transform_tolerance;//更新坐标系tf转换时间
+  if (map_update_thread_ != NULL)//地图更新线程是否关闭
   {
     map_update_thread_shutdown_ = true;
-    map_update_thread_->join();
+    map_update_thread_->join();//等待线程关闭
     delete map_update_thread_;
     map_update_thread_ = NULL;
   }
@@ -344,7 +344,7 @@ void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t l
 
   if (!layered_costmap_->isSizeLocked())
   {
-    layered_costmap_->resizeMap((unsigned int)(map_width_meters / resolution),
+    layered_costmap_->resizeMap((unsigned int)(map_width_meters / resolution),//master代价地图也会被更新
                                 (unsigned int)(map_height_meters / resolution), resolution, origin_x, origin_y);
   }
 
@@ -362,7 +362,7 @@ void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t l
 
   // only construct the thread if the frequency is positive
   if(map_update_frequency > 0.0)
-    map_update_thread_ = new boost::thread(boost::bind(&Costmap2DROS::mapUpdateLoop, this, map_update_frequency));
+    map_update_thread_ = new boost::thread(boost::bind(&Costmap2DROS::mapUpdateLoop, this, map_update_frequency));//地图更新线程
 }
 
 void Costmap2DROS::readFootprintFromConfig(const costmap_2d::Costmap2DConfig &new_config,
@@ -422,7 +422,7 @@ void Costmap2DROS::movementCB(const ros::TimerEvent &event)
   else
   {
     old_pose_ = new_pose;
-
+    //判断位置的变化有没有超过1e-3,旋转朝向是否超过1e-3,都小于,则被判定为没有运动
     robot_stopped_ = (tf2::Vector3(old_pose_.pose.position.x, old_pose_.pose.position.y,
                                    old_pose_.pose.position.z).distance(tf2::Vector3(new_pose.pose.position.x,
                                        new_pose.pose.position.y, new_pose.pose.position.z)) < 1e-3) &&

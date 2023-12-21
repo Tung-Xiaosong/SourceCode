@@ -55,7 +55,7 @@ RotateRecovery::RotateRecovery(): local_costmap_(NULL), initialized_(false), wor
 {
 }
 
-void RotateRecovery::initialize(std::string name, tf2_ros::Buffer*,
+void RotateRecovery::initialize(std::string name, tf2_ros::Buffer*,//只需要初始化局部的代价地图
                                 costmap_2d::Costmap2DROS*, costmap_2d::Costmap2DROS* local_costmap)
 {
   if (!initialized_)
@@ -67,11 +67,11 @@ void RotateRecovery::initialize(std::string name, tf2_ros::Buffer*,
     ros::NodeHandle blp_nh("~/TrajectoryPlannerROS");
 
     // 默认会模拟仿真每一度(degree)旋转的情况
-    private_nh.param("sim_granularity", sim_granularity_, 0.017);
+    private_nh.param("sim_granularity", sim_granularity_, 0.017);//0.017弧度->1°,如果360°都没有碰撞情况,那么就旋转一整圈
     private_nh.param("frequency", frequency_, 20.0);
 
-    acc_lim_th_ = nav_core::loadParameterWithDeprecation(blp_nh, "acc_lim_theta", "acc_lim_th", 3.2);
-    max_rotational_vel_ = nav_core::loadParameterWithDeprecation(blp_nh, "max_vel_theta", "max_rotational_vel", 1.0);
+    acc_lim_th_ = nav_core::loadParameterWithDeprecation(blp_nh, "acc_lim_theta", "acc_lim_th", 3.2);//角加速度限制
+    max_rotational_vel_ = nav_core::loadParameterWithDeprecation(blp_nh, "max_vel_theta", "max_rotational_vel", 1.0);//最大角速度
     min_rotational_vel_ = nav_core::loadParameterWithDeprecation(blp_nh, "min_in_place_vel_theta", "min_in_place_rotational_vel", 0.4);
     blp_nh.param("yaw_goal_tolerance", tolerance_, 0.10);
 
@@ -110,16 +110,16 @@ void RotateRecovery::runBehavior()
   ros::Publisher vel_pub = n.advertise<geometry_msgs::Twist>("cmd_vel", 10);
 
   geometry_msgs::PoseStamped global_pose;
-  local_costmap_->getRobotPose(global_pose);
+  local_costmap_->getRobotPose(global_pose);//获取机器人全局位姿
 
-  double current_angle = tf2::getYaw(global_pose.pose.orientation);
+  double current_angle = tf2::getYaw(global_pose.pose.orientation);//从机器人位姿中得到当前朝向
   // step 1 : 恢复前的位姿朝向
   double start_angle = current_angle;
 
   bool got_180 = false;
 
   while (n.ok() &&
-         (!got_180 ||
+         (!got_180 || //没有旋转到半圈
           std::fabs(angles::shortest_angular_distance(current_angle, start_angle)) > tolerance_))
   {
     // step 2 : while循环中更新当前角度
@@ -133,15 +133,15 @@ void RotateRecovery::runBehavior()
     if (!got_180)  // case 1 : 如果没有旋转到半圈
     {
       // 如果没有转到180度，还要旋转 distance_to_180度 + 半圈
-      double distance_to_180 = std::fabs(angles::shortest_angular_distance(current_angle, start_angle + M_PI));
-      dist_left = M_PI + distance_to_180;
+      double distance_to_180 = std::fabs(angles::shortest_angular_distance(current_angle, start_angle + M_PI));//离旋转到半圈,还有多少度
+      dist_left = M_PI + distance_to_180;//离旋转一圈,还有多少度
       // 到了误差允许范围
       if (distance_to_180 < tolerance_)
       {
         got_180 = true;
       }
     }
-    else  // case 2:  旋转有半圈了
+    else  // case 2:  旋转有半圈了,更新离旋转一圈差的度数
     {
       dist_left = std::fabs(angles::shortest_angular_distance(current_angle, start_angle));
     }
@@ -163,7 +163,7 @@ void RotateRecovery::runBehavior()
         return;
       }
 
-      sim_angle += sim_granularity_;
+      sim_angle += sim_granularity_;//如果没有碰撞就一直累加,直到旋转了一整圈
     }
 
     // step 5: 计算下发速度，让机器人可以在到达终点时停止

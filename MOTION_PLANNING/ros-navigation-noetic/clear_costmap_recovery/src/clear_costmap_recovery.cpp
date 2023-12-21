@@ -38,7 +38,7 @@
 #include <pluginlib/class_list_macros.h>
 #include <boost/pointer_cast.hpp>
 #include <vector>
-
+//TODO: 这个恢复行为,是将正方形内的区域的代价值置为 NOINFORMATION 未知的情况
 //register this planner as a RecoveryBehavior plugin
 // 该插件将costmap中给定半径（reset_distance_默认值3.0）范围之内的区域进行清理，即将栅格状态更新为未知信息
 PLUGINLIB_EXPORT_CLASS(clear_costmap_recovery::ClearCostmapRecovery, nav_core::RecoveryBehavior)
@@ -60,11 +60,11 @@ void ClearCostmapRecovery::initialize(std::string name, tf2_ros::Buffer* tf,
     // 参数服务器中获得参数
     ros::NodeHandle private_nh("~/" + name_);
 
-    private_nh.param("reset_distance", reset_distance_, 3.0);
+    private_nh.param("reset_distance", reset_distance_, 3.0);//以机器人为中心,以reset_distance为边长,画一个正方形范围
     private_nh.param("invert_area_to_clear", invert_area_to_clear_, false);
     private_nh.param("force_updating", force_updating_, false);
-    private_nh.param("affected_maps", affected_maps_, std::string("both"));
-    if (affected_maps_ != "local" && affected_maps_ != "global" && affected_maps_ != "both")
+    private_nh.param("affected_maps", affected_maps_, std::string("both"));//affected_maps要被处理的地图
+    if (affected_maps_ != "local" && affected_maps_ != "global" && affected_maps_ != "both")//要么处理局部地图,要么全局,要么两个都处理
     {
       ROS_WARN("Wrong value for affected_maps parameter: '%s'; valid values are 'local', 'global' or 'both'; " \
                "defaulting to 'both'", affected_maps_.c_str());
@@ -72,7 +72,7 @@ void ClearCostmapRecovery::initialize(std::string name, tf2_ros::Buffer* tf,
     }
 
     std::vector<std::string> clearable_layers_default, clearable_layers;
-    clearable_layers_default.push_back( std::string("obstacles") );
+    clearable_layers_default.push_back( std::string("obstacles") );//默认清理的是障碍物层
     private_nh.param("layer_names", clearable_layers, clearable_layers_default);
 
     for(unsigned i=0; i < clearable_layers.size(); i++) {
@@ -107,18 +107,18 @@ void ClearCostmapRecovery::runBehavior(){
   }
 
   ros::WallTime t0 = ros::WallTime::now();
-  if (affected_maps_ == "global" || affected_maps_ == "both")
+  if (affected_maps_ == "global" || affected_maps_ == "both")//如果处理全局地图或者两个都处理
   {
     clear(global_costmap_);
 
-    if (force_updating_)
+    if (force_updating_)//强制更新
       global_costmap_->updateMap();
 
     ROS_DEBUG("Global costmap cleared in %fs", (ros::WallTime::now() - t0).toSec());
   }
 
   t0 = ros::WallTime::now();
-  if (affected_maps_ == "local" || affected_maps_ == "both")
+  if (affected_maps_ == "local" || affected_maps_ == "both")//如果处理局部的代价地图或者两个都处理
   {
     clear(local_costmap_);
 
@@ -130,7 +130,7 @@ void ClearCostmapRecovery::runBehavior(){
 }
 
 void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
-  std::vector<boost::shared_ptr<costmap_2d::Layer> >* plugins = costmap->getLayeredCostmap()->getPlugins();
+  std::vector<boost::shared_ptr<costmap_2d::Layer> >* plugins = costmap->getLayeredCostmap()->getPlugins();//获取代价地图插件
 
   geometry_msgs::PoseStamped pose;
 
@@ -140,10 +140,10 @@ void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
     return;
   }
 
-  double x = pose.pose.position.x;
+  double x = pose.pose.position.x;//得到x,y坐标
   double y = pose.pose.position.y;
 
-  for (std::vector<boost::shared_ptr<costmap_2d::Layer> >::iterator pluginp = plugins->begin(); pluginp != plugins->end(); ++pluginp) {
+  for (std::vector<boost::shared_ptr<costmap_2d::Layer> >::iterator pluginp = plugins->begin(); pluginp != plugins->end(); ++pluginp) {//遍历代价地图插件
     boost::shared_ptr<costmap_2d::Layer> plugin = *pluginp;
     std::string name = plugin->getName();
     // 返回该字符在字符串中的下标
@@ -163,21 +163,21 @@ void ClearCostmapRecovery::clear(costmap_2d::Costmap2DROS* costmap){
 
       boost::shared_ptr<costmap_2d::CostmapLayer> costmap;
       costmap = boost::static_pointer_cast<costmap_2d::CostmapLayer>(plugin);
-      clearMap(costmap, x, y);
+      clearMap(costmap, x, y);//调用clearMap()进行清理
     }
   }
 }
 
 
-void ClearCostmapRecovery::clearMap(boost::shared_ptr<costmap_2d::CostmapLayer> costmap,
+void ClearCostmapRecovery::clearMap(boost::shared_ptr<costmap_2d::CostmapLayer> costmap,//输入为:代价地图和机器人当前位置
                                         double pose_x, double pose_y){
   boost::unique_lock<costmap_2d::Costmap2D::mutex_t> lock(*(costmap->getMutex()));
-
+  //根据机器人xy坐标和重置的边长来计算正方形的四个角
   double start_point_x = pose_x - reset_distance_ / 2;
   double start_point_y = pose_y - reset_distance_ / 2;
   double end_point_x = start_point_x + reset_distance_;
   double end_point_y = start_point_y + reset_distance_;
-
+  //这些坐标是world坐标系下的,需要转换为map,找到map中对应的像素坐标
   int start_x, start_y, end_x, end_y;
   costmap->worldToMapNoBounds(start_point_x, start_point_y, start_x, start_y);   // meter --> pixel
   costmap->worldToMapNoBounds(end_point_x, end_point_y, end_x, end_y);
