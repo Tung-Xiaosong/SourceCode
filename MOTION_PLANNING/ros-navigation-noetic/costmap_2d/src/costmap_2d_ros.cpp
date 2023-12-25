@@ -124,7 +124,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
   if (private_nh.hasParam("plugins"))
   {
     XmlRpc::XmlRpcValue my_list;
-    private_nh.getParam("plugins", my_list);//加载各层的插件
+    private_nh.getParam("plugins", my_list);//加载各层的插件(静态层、障碍物层、膨胀层)
     for (int32_t i = 0; i < my_list.size(); ++i)//对每一层进行遍历
     {
       std::string pname = static_cast<std::string>(my_list[i]["name"]);//获得每一层的名字,类型
@@ -134,7 +134,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
       copyParentParameters(pname, type, private_nh);//将它的参数拷贝进去
 
       boost::shared_ptr<Layer> plugin = plugin_loader_.createInstance(type);//创建对应这一层的实例,作为插件
-      layered_costmap_->addPlugin(plugin);
+      layered_costmap_->addPlugin(plugin);//被master代价地图进行加载
       plugin->initialize(layered_costmap_, name + "/" + pname, &tf_);
     }
   }
@@ -169,7 +169,7 @@ Costmap2DROS::Costmap2DROS(const std::string& name, tf2_ros::Buffer& tf) :
 
   // step 8 创建检测机器人运动的计时器(检测机器人是否有运动)
   robot_stopped_ = false;
-  timer_ = private_nh.createTimer(ros::Duration(.1), &Costmap2DROS::movementCB, this);
+  timer_ = private_nh.createTimer(ros::Duration(.1), &Costmap2DROS::movementCB, this);//以0.1s的周期调用movementCB函数
   // step 9 开启动态参数配置
   dsrv_ = new dynamic_reconfigure::Server<Costmap2DConfig>(ros::NodeHandle("~/" + name));
   dynamic_reconfigure::Server<Costmap2DConfig>::CallbackType cb = boost::bind(&Costmap2DROS::reconfigureCB, this, _1,
@@ -318,7 +318,7 @@ void Costmap2DROS::checkOldParam(ros::NodeHandle& nh, const std::string &param_n
   }
 }
 
-void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t level)//输入新的配置
+void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t level)//输入新的配置,覆盖旧的配置
 {
   transform_tolerance_ = config.transform_tolerance;//更新坐标系tf转换时间
   if (map_update_thread_ != NULL)//地图更新线程是否关闭
@@ -329,9 +329,9 @@ void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t l
     map_update_thread_ = NULL;
   }
   map_update_thread_shutdown_ = false;
-  double map_update_frequency = config.update_frequency;
+  double map_update_frequency = config.update_frequency;//地图更新频率
 
-  double map_publish_frequency = config.publish_frequency;
+  double map_publish_frequency = config.publish_frequency;//发布频率
   if (map_publish_frequency > 0)
     publish_cycle = ros::Duration(1 / map_publish_frequency);
   else
@@ -350,7 +350,7 @@ void Costmap2DROS::reconfigureCB(costmap_2d::Costmap2DConfig &config, uint32_t l
 
   // If the padding has changed, call setUnpaddedRobotFootprint() to
   // re-apply the padding.
-  if (footprint_padding_ != config.footprint_padding)
+  if (footprint_padding_ != config.footprint_padding)//padding就是机器人footprint外面再加薄薄的一层
   {
     footprint_padding_ = config.footprint_padding;
     setUnpaddedRobotFootprint(unpadded_footprint_);
@@ -413,7 +413,7 @@ void Costmap2DROS::movementCB(const ros::TimerEvent &event)
 
   geometry_msgs::PoseStamped new_pose;
 
-  if (!getRobotPose(new_pose))
+  if (!getRobotPose(new_pose))//获取机器人新的位姿
   {
     ROS_WARN_THROTTLE(1.0, "Could not get robot pose, cancelling reconfiguration");
     robot_stopped_ = false;
@@ -448,7 +448,7 @@ void Costmap2DROS::mapUpdateLoop(double frequency)
     gettimeofday(&start, NULL);
     #endif
 
-    updateMap();
+    updateMap();//更新地图
 
     #ifdef HAVE_SYS_TIME_H
     gettimeofday(&end, NULL);
@@ -491,7 +491,7 @@ void Costmap2DROS::updateMap()
              y = pose.pose.position.y,
              yaw = tf2::getYaw(pose.pose.orientation);
 
-      layered_costmap_->updateMap(x, y, yaw);//取出机器人xy,yaw用来更新,这里的updateMap是LayeredCostmap的成员函数,Costmap2DROS::updateMap()只是一个壳而已
+      layered_costmap_->updateMap(x, y, yaw);//取出机器人xy,yaw用来更新,这里的updateMap是LayeredCostmap的成员函数,才是真正的地图更新实现,Costmap2DROS::updateMap()只是一个壳而已
 
       geometry_msgs::PolygonStamped footprint;
       footprint.header.frame_id = global_frame_;

@@ -86,7 +86,7 @@ void StaticLayer::onInitialize()
   lethal_threshold_ = std::max(std::min(temp_lethal_threshold, 100), 0);
   unknown_cost_value_ = temp_unknown_cost_value;
 
-  // Only resubscribe if topic has changed
+  // Only resubscribe if topic has changed仅在主题更改时重新订阅
   if (map_sub_.getTopic() != ros::names::resolve(map_topic))
   {
     // 从map server的发出话题中订阅地图数据
@@ -104,7 +104,7 @@ void StaticLayer::onInitialize()
 
     ROS_INFO("Received a %d X %d map at %f m/pix", getSizeInCellsX(), getSizeInCellsY(), getResolution());
 
-    if (subscribe_to_updates_)
+    if (subscribe_to_updates_)//如果还要订阅更新
     {
       ROS_INFO("Subscribing to updates");
       map_update_sub_ = g_nh.subscribe(map_topic + "_updates", 10, &StaticLayer::incomingUpdate, this);
@@ -123,7 +123,7 @@ void StaticLayer::onInitialize()
 
   dsrv_ = new dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>(nh);
   dynamic_reconfigure::Server<costmap_2d::GenericPluginConfig>::CallbackType cb = boost::bind(
-      &StaticLayer::reconfigureCB, this, _1, _2);
+      &StaticLayer::reconfigureCB, this, _1, _2);//动态参数加载
   dsrv_->setCallback(cb);
 }
 
@@ -152,7 +152,7 @@ void StaticLayer::matchSize()
 }
 
 unsigned char StaticLayer::interpretValue(unsigned char value)
-{
+{ //将地图的value信息归为三类:
   // 1. 如果阈值lethal_threshold视为障碍物
   // 2. 没有信息的就认为是未探测的区域
   // 3. 否则为自由空间，true, -1
@@ -172,7 +172,7 @@ unsigned char StaticLayer::interpretValue(unsigned char value)
   return scale * LETHAL_OBSTACLE;
 }
 
-void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
+void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)//新传入了栅格地图
 {
   // step 1 从地图消息中获取地图的宽和高
   unsigned int size_x = new_map->info.width, size_y = new_map->info.height;
@@ -181,7 +181,7 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
 
   // step 2 判断master costmap地图是否发生变化，有则改变尺寸
   Costmap2D* master = layered_costmap_->getCostmap();
-  if (!layered_costmap_->isRolling() &&
+  if (!layered_costmap_->isRolling() && //首先确保不是滚动的
       (master->getSizeInCellsX() != size_x ||
        master->getSizeInCellsY() != size_y ||
        master->getResolution() != new_map->info.resolution ||
@@ -190,7 +190,7 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
   {
     // 如果master costmap 层发生变化，就更新layered_costmap_ 范围
     ROS_INFO("Resizing costmap to %d X %d at %f m/pix", size_x, size_y, new_map->info.resolution);
-    layered_costmap_->resizeMap(size_x, size_y, new_map->info.resolution, new_map->info.origin.position.x,
+    layered_costmap_->resizeMap(size_x, size_y, new_map->info.resolution, new_map->info.origin.position.x,//如果master costmap发生了变化,就调用resizeMap更新整个master的代价地图
                                 new_map->info.origin.position.y,
                                 true /* set size_locked to true, prevents reconfigureCb from overriding map size*/);
   }
@@ -221,7 +221,7 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)
       costmap_[index] = interpretValue(value);
       ++index;
     }
-  }
+  }//综上,先更新代价地图的范围,再将地图里的代价值转换为代价地图的值
   map_frame_ = new_map->header.frame_id;
 
   // 有了新地图，更新高和宽
@@ -248,10 +248,10 @@ void StaticLayer::incomingUpdate(const map_msgs::OccupancyGridUpdateConstPtr& up
     for (unsigned int x = 0; x < update->width ; x++)
     {
       unsigned int index = index_base + x + update->x;
-      costmap_[index] = interpretValue(update->data[di++]);
+      costmap_[index] = interpretValue(update->data[di++]);//将地图对应的代价值转换为代价地图的代价值
     }
   }
-  x_ = update->x;
+  x_ = update->x;//原点坐标
   y_ = update->y;
   width_ = update->width;
   height_ = update->height;
@@ -284,7 +284,7 @@ void StaticLayer::reset()
 
 // 参数 min_x=min_y=1e30，max_x=max_y=-1e30. 没有用到robot_x，robot_y,robot_yaw
 void StaticLayer::updateBounds(double robot_x, double robot_y, double robot_yaw, double* min_x, double* min_y,
-                               double* max_x, double* max_y)
+                               double* max_x, double* max_y)//TODO 更新地图范围
 {
 
   if( !layered_costmap_->isRolling() ){
@@ -298,7 +298,7 @@ void StaticLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
   double wx, wy;
 
   // 计算静态costmap地图左下角像素的坐标
-  mapToWorld(x_, y_, wx, wy);
+  mapToWorld(x_, y_, wx, wy);//map坐标转换为world坐标(map坐标单位是像素,world坐标单位是m)
   *min_x = std::min(wx, *min_x);
   *min_y = std::min(wy, *min_y);
 
@@ -311,7 +311,7 @@ void StaticLayer::updateBounds(double robot_x, double robot_y, double robot_yaw,
 }
 
 
-void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)
+void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int min_j, int max_i, int max_j)//TODO 更新地图代价值
 {
   if (!map_received_)
     return;
@@ -326,7 +326,7 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
     else
       updateWithMax(master_grid, min_i, min_j, max_i, max_j);
   }
-  else
+  else  //代价地图是滚动的,坐标系会发生变化
   {
     // 如果rolling window, master_grid可能和这个层的坐标系不一样了
     unsigned int mx, my;
@@ -347,20 +347,20 @@ void StaticLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, int
     tf2::convert(transform.transform, tf2_transform);
     for (unsigned int i = min_i; i < max_i; ++i)
     {
-      for (unsigned int j = min_j; j < max_j; ++j)
+      for (unsigned int j = min_j; j < max_j; ++j)//两个for循环对地图中的每个点进行遍历
       {
         // Convert master_grid coordinates (i,j) into global_frame_(wx,wy) coordinates
         layered_costmap_->getCostmap()->mapToWorld(i, j, wx, wy);
         // Transform from global_frame_ to map_frame_
-        tf2::Vector3 p(wx, wy, 0);
-        p = tf2_transform*p;
+        tf2::Vector3 p(wx, wy, 0);//取出点p
+        p = tf2_transform*p;//将p转换到world坐标下
         // Set master_grid with cell from map
         if (worldToMap(p.x(), p.y(), mx, my))
         {
-          if (!use_maximum_)
-            master_grid.setCost(i, j, getCost(mx, my));
+          if (!use_maximum_)//如果用最大值
+            master_grid.setCost(i, j, getCost(mx, my));//直接用静态地图作为代价值
           else
-            master_grid.setCost(i, j, std::max(getCost(mx, my), master_grid.getCost(i, j)));
+            master_grid.setCost(i, j, std::max(getCost(mx, my), master_grid.getCost(i, j)));//如果静态地图值比较大,就会作为代价值
         }
       }
     }
