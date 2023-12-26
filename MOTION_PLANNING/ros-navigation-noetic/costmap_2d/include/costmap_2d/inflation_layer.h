@@ -188,8 +188,8 @@ private:
   bool* seen_;
   int seen_size_;
 
-  unsigned char** cached_costs_;
-  double** cached_distances_;
+  unsigned char** cached_costs_;//(指针的指针,二维数组)
+  double** cached_distances_;//(二维数组)
   double last_min_x_, last_min_y_, last_max_x_, last_max_y_;
 
   dynamic_reconfigure::Server<costmap_2d::InflationPluginConfig> *dsrv_;

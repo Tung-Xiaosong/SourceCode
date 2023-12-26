@@ -110,34 +110,34 @@ void ObservationBuffer::bufferCloud(const sensor_msgs::PointCloud2& cloud)
   geometry_msgs::PointStamped global_origin;
 
   // create a new observation on the list to be populated
-  observation_list_.push_front(Observation());
+  observation_list_.push_front(Observation());//将传入的点云做简单处理,放入observation_list_
 
   // check whether the origin frame has been set explicitly or whether we should get it from the cloud
-  string origin_frame = sensor_frame_ == "" ? cloud.header.frame_id : sensor_frame_;
+  string origin_frame = sensor_frame_ == "" ? cloud.header.frame_id : sensor_frame_;//如果已经设置了传感器坐标系,则直接用设置的坐标系.如果没有设置,即为空,则用传入点云给的坐标系
 
   try
   {
     // given these observations come from sensors... we'll need to store the origin pt of the sensor
-    geometry_msgs::PointStamped local_origin;
+    geometry_msgs::PointStamped local_origin;//获取点云中的原点,转换成全局坐标系下存入observation_list_
     local_origin.header.stamp = cloud.header.stamp;
     local_origin.header.frame_id = origin_frame;
     local_origin.point.x = 0;
     local_origin.point.y = 0;
     local_origin.point.z = 0;
-    tf2_buffer_.transform(local_origin, global_origin, global_frame_);
-    tf2::convert(global_origin.point, observation_list_.front().origin_);
+    tf2_buffer_.transform(local_origin, global_origin, global_frame_);//转换到全局坐标
+    tf2::convert(global_origin.point, observation_list_.front().origin_);//存入observation_list_的第一个origin_里
 
     // make sure to pass on the raytrace/obstacle range of the observation buffer to the observations
-    observation_list_.front().raytrace_range_ = raytrace_range_;
+    observation_list_.front().raytrace_range_ = raytrace_range_;//更新范围
     observation_list_.front().obstacle_range_ = obstacle_range_;
 
     sensor_msgs::PointCloud2 global_frame_cloud;
 
     // transform the point cloud
-    tf2_buffer_.transform(cloud, global_frame_cloud, global_frame_);
+    tf2_buffer_.transform(cloud, global_frame_cloud, global_frame_);//cloud点云转换到期间坐标系下
     global_frame_cloud.header.stamp = cloud.header.stamp;
 
-    // now we need to remove observations from the cloud that are below or above our height thresholds
+    // now we need to remove observations from the cloud that are below or above our height thresholds现在我们需要从云中删除低于或高于高度阈值的观测值
     sensor_msgs::PointCloud2& observation_cloud = *(observation_list_.front().cloud_);
     observation_cloud.height = global_frame_cloud.height;
     observation_cloud.width = global_frame_cloud.width;
@@ -152,15 +152,15 @@ void ObservationBuffer::bufferCloud(const sensor_msgs::PointCloud2& cloud)
     modifier.resize(cloud_size);
     unsigned int point_count = 0;
 
-    // copy over the points that are within our height bounds
+    // copy over the points that are within our height bounds复制高度范围内的点,超出范围的点云就不会被拷贝
     sensor_msgs::PointCloud2Iterator<float> iter_z(global_frame_cloud, "z");
     std::vector<unsigned char>::const_iterator iter_global = global_frame_cloud.data.begin(), iter_global_end = global_frame_cloud.data.end();
     std::vector<unsigned char>::iterator iter_obs = observation_cloud.data.begin();
-    for (; iter_global != iter_global_end; ++iter_z, iter_global += global_frame_cloud.point_step)
+    for (; iter_global != iter_global_end; ++iter_z, iter_global += global_frame_cloud.point_step)//开始遍历点云
     {
-      if ((*iter_z) <= max_obstacle_height_
+      if ((*iter_z) <= max_obstacle_height_//只要满足高度范围
           && (*iter_z) >= min_obstacle_height_)
-      {
+      {           //开始位置      结束位置                                    拷贝进入的位置
         std::copy(iter_global, iter_global + global_frame_cloud.point_step, iter_obs);
         iter_obs += global_frame_cloud.point_step;
         ++point_count;
@@ -185,7 +185,7 @@ void ObservationBuffer::bufferCloud(const sensor_msgs::PointCloud2& cloud)
   last_updated_ = ros::Time::now();
 
   // we'll also remove any stale observations from the list
-  purgeStaleObservations();
+  purgeStaleObservations();//清除太老的观测数据
 }
 
 // returns a copy of the observations

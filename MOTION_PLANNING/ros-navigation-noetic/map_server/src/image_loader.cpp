@@ -127,7 +127,7 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
       else
           alpha = *(p+n_channels-1);
 
-      if(negate)
+      if(negate)//一般的:区域越黑,越可能是障碍物,negate,则相反
         color_avg = 255 - color_avg;
 
       if(mode==RAW){
@@ -150,7 +150,7 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
         value = 0;
       else if(mode==TRINARY || alpha < 1.0)
         value = -1;
-      else {
+      else {//值介于占据和自由阈值之间
         double ratio = (occ - free_th) / (occ_th - free_th);
         value = 1 + 98 * ratio;
       }

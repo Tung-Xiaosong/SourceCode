@@ -81,7 +81,7 @@ class MapServer
       metadata_pub_ = nh_.advertise<nav_msgs::MapMetaData>("map_metadata", 1, true);
 
       // 发布锁存的地图消息
-      map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);
+      map_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("map", 1, true);//导航所用到的地图信息就是这里的map
 
       deprecated_ = (res != 0);
       if (!deprecated_) {
@@ -143,7 +143,7 @@ class MapServer
     {
       ROS_INFO("Loading map from image \"%s\"", map_file_name.c_str());
       try {
-        map_server::loadMapFromFile(&map_resp_, map_file_name.c_str(),
+        map_server::loadMapFromFile(&map_resp_, map_file_name.c_str(),//加载地图
                                     resolution, negate, occ_th, free_th,
                                     origin, mode);
       } catch (std::runtime_error& e) {

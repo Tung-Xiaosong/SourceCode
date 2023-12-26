@@ -77,7 +77,7 @@ void InflationLayer::onInitialize()
     boost::unique_lock < boost::recursive_mutex > lock(*inflation_access_);
     ros::NodeHandle nh("~/" + name_), g_nh;
     current_ = true;
-    if (seen_)
+    if (seen_)//seen_是一个数组,用于告知函数这个元素是否被膨胀过,true为膨胀更新
       delete[] seen_;
     seen_ = NULL;
     seen_size_ = 0;

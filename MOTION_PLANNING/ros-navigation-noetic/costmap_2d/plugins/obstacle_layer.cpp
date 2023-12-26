@@ -80,7 +80,7 @@ void ObstacleLayer::onInitialize()
 
   std::string topics_string;
   // 从参数服务器获取所订阅的话题
-  nh.param("observation_sources", topics_string, std::string(""));
+  nh.param("observation_sources", topics_string, std::string(""));//观测源:一般是激光雷达或者深度相机
   ROS_INFO("    Subscribed to Topics: %s", topics_string.c_str());
 
   // 使用字符串流,方便用空格分开话题
@@ -98,16 +98,16 @@ void ObstacleLayer::onInitialize()
 
     source_node.param("topic", topic, source);
     source_node.param("sensor_frame", sensor_frame, std::string(""));
-    source_node.param("observation_persistence", observation_keep_time, 0.0);
-    source_node.param("expected_update_rate", expected_update_rate, 0.0);
+    source_node.param("observation_persistence", observation_keep_time, 0.0);//观测时长,障碍物代价地图保留时间
+    source_node.param("expected_update_rate", expected_update_rate, 0.0);//期望更新频率
     source_node.param("data_type", data_type, std::string("PointCloud"));
     source_node.param("min_obstacle_height", min_obstacle_height, 0.0);
     source_node.param("max_obstacle_height", max_obstacle_height, 2.0);
-    source_node.param("inf_is_valid", inf_is_valid, false);
+    source_node.param("inf_is_valid", inf_is_valid, false);//无限的值是否合法
     source_node.param("clearing", clearing, false);
     source_node.param("marking", marking, true);
 
-    if (!(data_type == "PointCloud2" || data_type == "PointCloud" || data_type == "LaserScan"))
+    if (!(data_type == "PointCloud2" || data_type == "PointCloud" || data_type == "LaserScan"))//只提供这三种数据类型
     {
       ROS_FATAL("Only topics that use point clouds or laser scans are currently supported");
       throw std::runtime_error("Only topics that use point clouds or laser scans are currently supported");
@@ -116,14 +116,14 @@ void ObstacleLayer::onInitialize()
     std::string raytrace_range_param_name, obstacle_range_param_name;
 
     // 确定传感器所能探测到障碍物的最大范围值
-    double obstacle_range = 2.5;
+    double obstacle_range = 2.5;//标记障碍物距离,如果障碍物超出这个距离,栅格地图不会进行转换
     if (source_node.searchParam("obstacle_range", obstacle_range_param_name))
     {
       source_node.getParam(obstacle_range_param_name, obstacle_range);
     }
 
     // 确定传感器所能感知到周围环境的最大范围值
-    double raytrace_range = 3.0;
+    double raytrace_range = 3.0;//清理障碍物距离
     if (source_node.searchParam("raytrace_range", raytrace_range_param_name))
     {
       source_node.getParam(raytrace_range_param_name, raytrace_range);
@@ -160,9 +160,9 @@ void ObstacleLayer::onInitialize()
           > sub(new message_filters::Subscriber<sensor_msgs::LaserScan>(g_nh, topic, 50));
 
       boost::shared_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan> > filter(
-        new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*sub, *tf_, global_frame_, 50, g_nh));
+        new tf2_ros::MessageFilter<sensor_msgs::LaserScan>(*sub, *tf_, global_frame_, 50, g_nh));//消息过滤器,集合了许多消息过滤算法(消息缓存)
 
-      if (inf_is_valid)
+      if (inf_is_valid)//无限的值是否合法
       {
         filter->registerCallback(boost::bind(&ObstacleLayer::laserScanValidInfCallback, this, _1,
                                             observation_buffers_.back()));
@@ -172,8 +172,8 @@ void ObstacleLayer::onInitialize()
         filter->registerCallback(boost::bind(&ObstacleLayer::laserScanCallback, this, _1, observation_buffers_.back()));
       }
 
-      observation_subscribers_.push_back(sub);
-      observation_notifiers_.push_back(filter);
+      observation_subscribers_.push_back(sub);//因为可能不止一个激光雷达,所以需要存多个激光雷达订阅器
+      observation_notifiers_.push_back(filter);//过滤器同样
 
       observation_notifiers_.back()->setTolerance(ros::Duration(0.05));
     }
@@ -195,10 +195,10 @@ void ObstacleLayer::onInitialize()
       observation_subscribers_.push_back(sub);
       observation_notifiers_.push_back(filter);
     }
-    else
+    else//PointCloud2
     {
       boost::shared_ptr < message_filters::Subscriber<sensor_msgs::PointCloud2>
-          > sub(new message_filters::Subscriber<sensor_msgs::PointCloud2>(g_nh, topic, 50));
+          > sub(new message_filters::Subscriber<sensor_msgs::PointCloud2>(g_nh, topic, 50));//实例一个sub订阅器
 
       if (inf_is_valid)
       {
@@ -206,7 +206,7 @@ void ObstacleLayer::onInitialize()
       }
 
       boost::shared_ptr < tf2_ros::MessageFilter<sensor_msgs::PointCloud2>
-      > filter(new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*sub, *tf_, global_frame_, 50, g_nh));
+      > filter(new tf2_ros::MessageFilter<sensor_msgs::PointCloud2>(*sub, *tf_, global_frame_, 50, g_nh));//实例一个消息的滤波器
       filter->registerCallback(
           boost::bind(&ObstacleLayer::pointCloud2Callback, this, _1, observation_buffers_.back()));
 
@@ -224,7 +224,7 @@ void ObstacleLayer::onInitialize()
   }
 
   dsrv_ = NULL;
-  setupDynamicReconfigure(nh);
+  setupDynamicReconfigure(nh);//动态参数重配置
 }
 
 void ObstacleLayer::setupDynamicReconfigure(ros::NodeHandle& nh)
@@ -258,7 +258,7 @@ void ObstacleLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& mess
   // 激光数据装换成点云
   try
   {
-    projector_.transformLaserScanToPointCloud(message->header.frame_id, *message, cloud, *tf_);
+    projector_.transformLaserScanToPointCloud(message->header.frame_id, *message, cloud, *tf_);//将激光数据转换为点云,转换后的点云存在cloud
   }
   catch (tf2::TransformException &ex)
   {
@@ -274,7 +274,7 @@ void ObstacleLayer::laserScanCallback(const sensor_msgs::LaserScanConstPtr& mess
 
   // 缓冲点云信息
   buffer->lock();
-  buffer->bufferCloud(cloud);
+  buffer->bufferCloud(cloud);//转换完成后,将cloud存进buffer
   buffer->unlock();
 }
 
@@ -344,7 +344,7 @@ void ObstacleLayer::pointCloud2Callback(const sensor_msgs::PointCloud2ConstPtr& 
                                                 const boost::shared_ptr<ObservationBuffer>& buffer)
 {
   // buffer the point cloud
-  buffer->lock();
+  buffer->lock();//加锁
   buffer->bufferCloud(*message);
   buffer->unlock();
 }
@@ -363,7 +363,7 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
   useExtraBounds(min_x, min_y, max_x, max_y);
 
   bool current = true;
-  std::vector<Observation> observations, clearing_observations;
+  std::vector<Observation> observations, clearing_observations;//定义两个容器
 
   // 获取标记观测
   current = current && getMarkingObservations(observations);
@@ -377,12 +377,12 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
   // 光线跟踪自由空间
   for (unsigned int i = 0; i < clearing_observations.size(); ++i)
   {
-    raytraceFreespace(clearing_observations[i], min_x, min_y, max_x, max_y);
+    raytraceFreespace(clearing_observations[i], min_x, min_y, max_x, max_y);//清除障碍物,costmap中障碍物的清除原理就是基于raytrace光线追踪
   }
 
   // place the new obstacles into a priority queue... each with a priority of zero to begin with
   // 将新障碍物放入优先级队列...每个都以零优先级开始
-  for (std::vector<Observation>::const_iterator it = observations.begin(); it != observations.end(); ++it)
+  for (std::vector<Observation>::const_iterator it = observations.begin(); it != observations.end(); ++it)//对每一个点进行遍历,将观测到的点云转换为栅格地图中致命的障碍物
   {
     const Observation& obs = *it;
 
@@ -390,7 +390,7 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
 
     double sq_obstacle_range = obs.obstacle_range_ * obs.obstacle_range_;
 
-    sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");
+    sensor_msgs::PointCloud2ConstIterator<float> iter_x(cloud, "x");//取出点的x,y,z坐标
     sensor_msgs::PointCloud2ConstIterator<float> iter_y(cloud, "y");
     sensor_msgs::PointCloud2ConstIterator<float> iter_z(cloud, "z");
 
@@ -425,7 +425,7 @@ void ObstacleLayer::updateBounds(double robot_x, double robot_y, double robot_ya
       }
 
       unsigned int index = getIndex(mx, my);
-      costmap_[index] = LETHAL_OBSTACLE;
+      costmap_[index] = LETHAL_OBSTACLE;//剩下的点云将被置为致命
       // 更新参数中指定的边界框以包括位置(x,y)
       touch(px, py, min_x, min_y, max_x, max_y);
     }
@@ -450,7 +450,7 @@ void ObstacleLayer::updateCosts(costmap_2d::Costmap2D& master_grid, int min_i, i
 {
   if (footprint_clearing_enabled_)
   {
-    setConvexPolygonCost(transformed_footprint_, costmap_2d::FREE_SPACE);
+    setConvexPolygonCost(transformed_footprint_, costmap_2d::FREE_SPACE);//footprint内的所有像素点都会被置为free_space
   }
   // 更新master_grid的方法
   switch (combination_method_)
