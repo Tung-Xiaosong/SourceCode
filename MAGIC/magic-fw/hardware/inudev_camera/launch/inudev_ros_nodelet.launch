@@ -1,0 +1,155 @@
+<!---->
+<launch>
+  <arg name="Service_ID" 		default=""    		  />
+  <arg name="tf_prefix"                 default=""                />
+  <arg name="stereo_namespace"          default="stereo"          />
+  <arg name="xyz_namespace"             default="cloudify"        />
+  <arg name="manager"                   default="nodelet_manager1" />
+
+  <!-- "screen" or "log" -->
+  <arg name="output"                    default="log"             />
+
+  <arg name="verbose"                   default="true"            />
+  
+  <arg name="run_stereo_image_proc"     default="0"               />
+
+  <arg name="run_disparity_to_depth"    default="0"               />
+
+  <!-- controls display of InuSW vide/disparity output -->
+  <arg name="run_image_view_video"      default="0"               />
+
+  <!-- controls display of ROS video->disparity processing display -->
+  <arg name="run_image_view_disparity"  default="0"               />
+
+  <arg name="run_image_view_depth"      default="0"               />
+
+  <arg name="run_image_view_fisheye"    default="0"               />
+
+  <arg name="run_image_view_RGB"    	default="0"               />
+
+  <arg name="run_rqt_image_view"        default="0"               />
+  <arg name="run_rviz"                  default="0"               />
+
+  <arg name="run_depth2xyz"             default="0"               />
+
+  <arg name="run_configure"             default="1"               />
+
+  <!-- controls loading disparity processing as nodelet (this now works) -->
+  <arg name="disparity_nodelet"         default="0"                 />
+
+  <!-- controls disabling loading of unused image transports. -->
+  <arg name="disable_unused_transports" default="1"                 />
+
+  <!-- =================================== NO CONFIGURATION OPTIOS BELOW THIS POINT =================================== -->
+
+  <rosparam file="$(find inudev_ros_nodelet)/cfg/InuRosParams$(arg Service_ID).yaml" />
+
+  <!-- Topic remapping according to service ID -->
+  <remap from="/camera/aligned_depth_to_color/image_raw" to="/camera/aligned_depth_to_color/image_raw$(arg Service_ID)" />
+  <remap from="/camera/color/image_raw"                  to="/camera/color/image_raw$(arg Service_ID)"                  />
+  <remap from="/sensor_msgs/Image/Video/right/image"     to="/sensor_msgs/Image/Video/right/image$(arg Service_ID)"     />
+  <remap from="/sensor_msgs/Image/Video/left/image"      to="/sensor_msgs/Image/Video/left/image$(arg Service_ID)"      />
+  <remap from="/sensor_msgs/Image/Video/disparity"       to="/sensor_msgs/Image/Video/disparity2$(arg Service_ID)"      />
+  <remap from="/sensor/PointCloud"                       to="/sensor/PointCloud$(arg Service_ID)"                       />
+  <remap from="/sensor_msgs/Image/Fisheye"               to="/sensor_msgs/Image/Fisheye$(arg Service_ID)"               />
+  <remap from="/sensor_msgs/Path"                        to="/sensor_msgs/Path$(arg Service_ID)"                        />
+  <remap from="/sensor_msgs/Imu"                         to="/sensor_msgs/Imu$(arg Service_ID)"                         />
+  <remap from="/vision_msgs/Detections"                  to="/vision_msgs/Detections$(arg Service_ID)"                  />
+  <remap from="/camera/fisheye/features"                 to="/camera/fisheye/features$(arg Service_ID)"                 />
+
+  <group if="$(arg disable_unused_transports)" >
+
+    <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="sensor_msgs/Image/Depth" />
+    <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="sensor_msgs/Image/Webcam" />
+
+    <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_all_transports_disable.launch" >
+      <arg name="side" value="left" />
+    </include>
+
+    <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_all_transports_disable.launch" >
+      <arg name="side" value="right" />
+    </include>
+
+  </group>
+
+  <!-- create a console if output is *not* screen -->
+
+  <!-- nodelet manager -->
+  <node pkg="nodelet" type="nodelet" name="$(arg manager)" args="manager" output="$(arg output)" />
+
+  <!-- this is Inuitive's ROS nodelet -->
+  <node pkg="nodelet" type="nodelet" name="inudev_ros_nodelet$(arg Service_ID)" args="load inudev_ros_nodelet/CInuDevRosNodelet $(arg manager) TEST" output="$(arg output)" required="true">
+    <param name="verbose" value="false" />
+    <param name="log_pointcloud" value="false" />
+  </node>
+
+  <!-- view ROS info -->
+
+  <!-- Static Transform Publisher -->
+  <!--node pkg="tf" type="static_transform_publisher" name="link_broadcaster$(arg Service_ID)" args="0.0 0.0 0.0 0 0 0 /map /$(arg Service_ID) 100" /-->
+
+
+  <!-- display InuSW disparity output -->
+  <node if="$(arg run_image_view_video)" pkg="image_view" type="stereo_view" name="image_view" args="_approximate_sync:=True" output="$(arg output)">
+    <param name="~window_name" value="Video" />
+    <remap from="stereo" to="/sensor_msgs/Image/Video" />
+    <param name="queue_size" value="5" />
+  </node>
+
+  <!-- Display of ROS video->disparity processing output -->
+  <node if="$(arg run_image_view_disparity)" pkg="image_view" type="stereo_view" name="disparity_view" output="$(arg output)">
+    <param name="~window_name" value="Disparity" />
+    <remap from="stereo" to="$(arg stereo_namespace)" />
+    <remap from="image" to="image_color" />
+  </node>
+
+  <node if="$(arg run_image_view_depth)" pkg="image_view" type="image_view" name="depth_view" respawn="true" respawn_delay="30" output="$(arg output)">
+    <param name="~window_name" value="Depth" />
+    <remap from="image" to="/sensor_msgs/Image/Depth" />
+  </node>
+
+  <node if="$(arg run_image_view_fisheye)" pkg="image_view" type="image_view" name="fisheye_view" respawn="true" respawn_delay="30" output="$(arg output)">
+    <param name="~window_name" value="Fisheye" />
+    <remap from="image" to="/sensor_msgs/Image/Fisheye" />
+  </node>
+
+  <node if="$(arg run_image_view_RGB)" pkg="image_view" type="image_view" name="RGB_view" respawn="true" respawn_delay="30" output="$(arg output)">
+    <param name="~window_name" value="RGB" />
+    <remap from="image" to="/camera/color/image_raw" />
+  </node>
+
+  <node if="$(arg run_depth2xyz)" pkg="nodelet" type="nodelet" name="cloudify" args="load depth_image_proc/point_cloud_xyz $(arg manager)" output="$(arg output)">
+     <remap from="sensor_msgs/Image" to="/sensor_msgs/Image/Depth" />
+     <remap from="sensor_msgs/CameraInfo" to="/sensor_msgs/Image/camera_info" />
+  </node>
+
+
+  <group if="$(arg run_stereo_image_proc)" >
+
+    <!--
+      video to disparity processing
+
+      We repawn, as stereo_image_proc will exit if the topics it expects are not being published. Note it will
+      also not publish on its own, anless it's topics are subscribed to.
+
+    -->
+
+    <remap from="/$(arg stereo_namespace)/left/image_raw" to="/sensor_msgs/Image/Video/left/image" />
+    <remap from="/$(arg stereo_namespace)/right/image_raw" to="/sensor_msgs/Image/Video/right/image" />
+    <remap from="/$(arg stereo_namespace)/left/camera_info" to="/sensor_msgs/Image/Video/left/camera_info" />
+    <remap from="/$(arg stereo_namespace)/right/camera_info" to="/sensor_msgs/Image/Video/right/camera_info" />
+
+    <!--
+        stereo image processing
+     -->
+
+    <node unless="$(arg disparity_nodelet)" pkg="stereo_image_proc" type="stereo_image_proc" name="stereo_image_proc" output="$(arg output)" ns="$(arg stereo_namespace)" respawn="true" respawn_delay="30" />
+
+    <node if="$(arg disparity_nodelet)" pkg="nodelet" type="nodelet" name="stereo_image_proc" output="$(arg output)" ns="$(arg stereo_namespace)" respawn="true" respawn_delay="30" args="load stereo_image_proc/disparity $(arg manager) --bond" />
+
+  </group>
+
+  <include file="$(find inudev_camera)/launch/pointcloud_to_laserscan.launch"/>
+  <include file="$(find pc_filter)/launch/run.launch"/> 
+
+</launch>

@@ -1,0 +1,11 @@
+<launch>
+  <node pkg="rslidar_sdk" name="rslidar_sdk_node" type="rslidar_sdk_node" output="screen">
+    <param name="config_path" value=""/>
+  </node>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="laser_link_to_base_link" args="0.13 0 0.57 0 0 0 base_link rslidar" />
+
+  <include file="$(find rslidar_sdk)/launch/pointcloud_to_laserscan.launch"/>
+  <!-- rviz -->
+  <!--node pkg="rviz" name="rviz" type="rviz" args="-d $(find rslidar_sdk)/rviz/rviz.rviz" /-->
+</launch>

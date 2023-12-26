@@ -1,0 +1,9 @@
+<!---->
+<launch>
+    <node pkg="pc_filter" type="pc_filter_node" name="pc_filter_node" output="screen">
+	<param name="rotate_x_1" value="-1.57"/> <!--调节俯仰角-->
+	<param name="rotate_y_1" value="0"/>
+	<param name="rotate_z_1" value="-1.57"/>
+
+	</node>
+</launch>

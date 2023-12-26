@@ -1,0 +1,43 @@
+<launch>
+  <arg name="Service_ID1"		 value="camera1"		  />
+  <arg name="Service_ID2"		 value="camera2"		  />
+ 
+  <arg name="tf_prefix1"                 value="camera1"                />
+  <arg name="tf_prefix2"                 value="camera2"                />
+ 
+  <arg name="stereo_namespace1"          value="stereo1"          />
+  <arg name="stereo_namespace2"          value="stereo2"          />
+ 
+  <arg name="xyz_namespace1"             value="cloudify1"        />
+  <arg name="xyz_namespace2"             value="cloudify2"        />
+ 
+  <arg name="manager1"                   value="nodelet_manager1" />
+  <arg name="manager2"                   value="nodelet_manager2" />
+ 
+
+  <group ns="$(arg Service_ID1)">
+    <include file="$(find inudev_camera)/launch/inudev_ros_nodelet.launch">
+    <arg name="Service_ID"               value="$(arg Service_ID1)"/>
+    <arg name="tf_prefix"                value="$(arg tf_prefix1)"/>
+    <arg name="stereo_namespace"         value="$(arg stereo_namespace1)"/>
+    <arg name="xyz_namespace"            value="$(arg xyz_namespace1)"/>
+    <arg name="manager"                  value="$(arg manager1)"/>
+    </include>
+  </group>
+
+  <group ns="$(arg Service_ID2)">
+    <include file="$(find inudev_camera)/launch/inudev_ros_nodelet.launch">
+    <arg name="Service_ID"               value="$(arg Service_ID2)"/>
+    <arg name="tf_prefix"                value="$(arg tf_prefix2)"/>
+    <arg name="stereo_namespace"         value="$(arg stereo_namespace2)"/>
+    <arg name="xyz_namespace"            value="$(arg xyz_namespace2)"/>
+    <arg name="manager"                  value="$(arg manager2)"/>
+     <arg name="run_configure"           value="0"/>
+    </include>
+  </group>
+
+
+  <include file="$(find inudev_camera)/launch/pointcloud_to_laserscan.launch"/>
+  <include file="$(find pc_filter)/launch/run.launch"/> 
+ 
+</launch>

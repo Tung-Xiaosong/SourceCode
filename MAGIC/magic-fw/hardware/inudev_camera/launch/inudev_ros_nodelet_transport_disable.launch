@@ -1,0 +1,9 @@
+<launch>
+  <!-- https://github.com/ros-perception/image_common/pull/60 -->
+
+    <rosparam param="disable_pub_plugins">
+      - 'image_transport/compressed'
+      - 'image_transport/compressedDepth'
+      - 'image_transport/theora'
+    </rosparam>
+</launch>

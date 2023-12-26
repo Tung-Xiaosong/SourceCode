@@ -1,0 +1,10 @@
+<launch>
+  <arg name="side" />
+
+  <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="stereo/$(arg side)/image_color" />
+  <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="stereo/$(arg side)/image_rect_color" />
+  <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="stereo/$(arg side)/image_rect" />
+  <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="sensor_msgs/Image/Video/$(arg side)/image" />
+  <include file="$(find inudev_ros_nodelet)/launch/inudev_ros_nodelet_transport_disable.launch" ns="stereo/$(arg side)/image_mono"  />
+</launch>
+

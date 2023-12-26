@@ -1,0 +1,50 @@
+angle:
+  -
+    disable_min: 0 # 0号线
+    disable_max: 36000
+  -
+    disable_min: 0 # 1
+    disable_max: 36000
+  -
+    disable_min: 0 # 2
+    disable_max: 36000
+  -
+    disable_min: 0  # 3
+    disable_max: 36000
+  -
+    disable_min: 0  # 4
+    disable_max: 36000
+  -
+    disable_min: 0  # 5
+    disable_max: 0
+
+  -
+    disable_min: 0  # 6
+    disable_max: 0
+  -
+    disable_min: 0  # 7
+    disable_max: 0
+  -
+    disable_min: 0  # 8
+    disable_max: 0
+  -
+    disable_min: 0  # 9
+    disable_max: 0
+  -
+    disable_min: 0  # 10
+    disable_max: 0
+  -
+    disable_min: 0  # 11
+    disable_max: 0
+  -
+    disable_min: 0  # 12
+    disable_max: 0
+  -
+    disable_min: 0  # 13
+    disable_max: 0
+  -
+    disable_min: 0  # 14
+    disable_max: 0
+  -
+    disable_min: 0  # 15
+    disable_max: 0
