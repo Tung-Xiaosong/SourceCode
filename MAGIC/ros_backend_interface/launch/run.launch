@@ -1,0 +1,8 @@
+<!--yhs-->
+<launch>
+
+    <node pkg="ros_backend_interface" type="ros_backend_interface" name="ros_backend_interface_node" output="screen">
+
+    </node>
+
+</launch>
