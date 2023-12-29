@@ -92,14 +92,14 @@ GlobalPlanner::~GlobalPlanner() {
 void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2DROS* costmap_ros) {
     initialize(name, costmap_ros->getCostmap(), costmap_ros->getGlobalFrameID());
 }
-
+//TODO
 void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap, std::string frame_id) {
     if (!initialized_) {
         ros::NodeHandle private_nh("~/" + name);
         costmap_ = costmap;
         frame_id_ = frame_id;
 
-        unsigned int cx = costmap->getSizeInCellsX(), cy = costmap->getSizeInCellsY();
+        unsigned int cx = costmap->getSizeInCellsX(), cy = costmap->getSizeInCellsY();//获取costmap的大小(像素个数)
 
         private_nh.param("old_navfn_behavior", old_navfn_behavior_, false);
         if(!old_navfn_behavior_)
@@ -108,7 +108,7 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
             convert_offset_ = 0.0;
 
         bool use_quadratic;
-        private_nh.param("use_quadratic", use_quadratic, true);
+        private_nh.param("use_quadratic", use_quadratic, true);//是否使用二次
         // 根据选择new出对应的p_calc_实例. 计算“一个点”的可行性
         if (use_quadratic)
             p_calc_ = new QuadraticCalculator(cx, cy); // 使用二次差值近似的potential
@@ -116,7 +116,7 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
             p_calc_ = new PotentialCalculator(cx, cy); //
 
         bool use_dijkstra;
-        private_nh.param("use_dijkstra", use_dijkstra, true);
+        private_nh.param("use_dijkstra", use_dijkstra, true);//规划算法选择,A*,Dijkstra
         // 根据选择new出对应的planner实例. 计算“所有”的可行点
         if (use_dijkstra)
         {
@@ -130,7 +130,7 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
             planner_ = new AStarExpansion(p_calc_, cx, cy);   // A*算法
 
         bool use_grid_path;
-        private_nh.param("use_grid_path", use_grid_path, false);
+        private_nh.param("use_grid_path", use_grid_path, false);//选择grid_path(四搜索法)或者gradient_path(八搜索法,平滑度更好)
         // 路径方法，new出path_maker_实例。从可行点中提取路径
         if (use_grid_path)
             // 栅格路径，从终点开始找上下或左右4个中最小的栅格直到起点
@@ -139,16 +139,16 @@ void GlobalPlanner::initialize(std::string name, costmap_2d::Costmap2D* costmap,
             // 梯度路径，从周围八个栅格中找到下降梯度最大的点
             path_maker_ = new GradientPath(p_calc_);
 
-        orientation_filter_ = new OrientationFilter();
+        orientation_filter_ = new OrientationFilter();//是否使用角度滤波(最初规划出的路径只有x,y)
 
-        plan_pub_ = private_nh.advertise<nav_msgs::Path>("plan", 1);
-        potential_pub_ = private_nh.advertise<nav_msgs::OccupancyGrid>("potential", 1);
+        plan_pub_ = private_nh.advertise<nav_msgs::Path>("plan", 1);//发布plan
+        potential_pub_ = private_nh.advertise<nav_msgs::OccupancyGrid>("potential", 1);//可视化势场高低
 
-        private_nh.param("allow_unknown", allow_unknown_, true);
+        private_nh.param("allow_unknown", allow_unknown_, true);//是否允许探索未知区域
         planner_->setHasUnknown(allow_unknown_);
         private_nh.param("planner_window_x", planner_window_x_, 0.0);
         private_nh.param("planner_window_y", planner_window_y_, 0.0);
-        private_nh.param("default_tolerance", default_tolerance_, 0.0);
+        private_nh.param("default_tolerance", default_tolerance_, 0.0);//到终点的容差范围
         private_nh.param("publish_scale", publish_scale_, 100);
         private_nh.param("outline_map", outline_map_, true);
 
@@ -215,7 +215,7 @@ bool GlobalPlanner::worldToMap(double wx, double wy, double& mx, double& my) {
 
     return false;
 }
-
+//TODO
 bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                            std::vector<geometry_msgs::PoseStamped>& plan) {
     return makePlan(start, goal, default_tolerance_, plan);
@@ -226,7 +226,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
 //  2. 从可行点矩阵中提取路径plan (path_maker_->getPath)）
 bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geometry_msgs::PoseStamped& goal,
                            double tolerance, std::vector<geometry_msgs::PoseStamped>& plan) {
-    boost::mutex::scoped_lock lock(mutex_);
+    boost::mutex::scoped_lock lock(mutex_);//上锁
     // step 1: 是否已经初始化
     if (!initialized_) {
         ROS_ERROR(
@@ -235,7 +235,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     }
 
     // 清空路径
-    plan.clear();
+    plan.clear();//每做一次plan前,将plan清空
 
     ros::NodeHandle n;
     std::string global_frame = frame_id_;
@@ -295,12 +295,12 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     p_calc_->setSize(nx, ny);
     planner_->setSize(nx, ny);
     path_maker_->setSize(nx, ny);
-    potential_array_ = new float[nx * ny];
+    potential_array_ = new float[nx * ny];//二维,hybrid A*是三维
 
     if(outline_map_)
         outlineMap(costmap_->getCharMap(), nx, ny, costmap_2d::LETHAL_OBSTACLE);
-    // step 6 核心步骤， 计算出potential_array_
-    bool found_legal = planner_->calculatePotentials(costmap_->getCharMap(), start_x, start_y, goal_x, goal_y,
+    // TODO step 6 核心步骤， 计算出potential_array_,如果选的是A*,则是A*的 calculatePotentials
+    bool found_legal = planner_->calculatePotentials(costmap_->getCharMap()/*从costmap获取char型的map(0~255)*/, start_x, start_y/*起点*/, goal_x, goal_y/*终点*/,
                                                     nx * ny * 2, potential_array_);
 
     if(!old_navfn_behavior_)
@@ -309,7 +309,7 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
         publishPotential(potential_array_);
 
     if (found_legal) {
-        // step 7 提取全局路径，用path_maker_->getPath得到路径
+        // TODO step 7 回溯,提取全局路径，用path_maker_->getPath得到路径(grid_path或gradient_path)
         if (getPlanFromPotential(start_x, start_y, goal_x, goal_y, goal, plan)) {
             // 更新目标点的时间戳，和路径的其他点时间戳一致
             geometry_msgs::PoseStamped goal_copy = goal;
@@ -325,9 +325,9 @@ bool GlobalPlanner::makePlan(const geometry_msgs::PoseStamped& start, const geom
     //  step 8 给路径添加方向
     orientation_filter_->processPath(start, plan);
 
-    // 发布路径和可视化
+    // step 9 发布路径和可视化
     publishPlan(plan);
-    delete[] potential_array_;
+    delete[] potential_array_;//new了一个东西,一定要delete删掉!否则会导致内存泄漏
     return !plan.empty();
 }
 
@@ -369,7 +369,7 @@ bool GlobalPlanner::getPlanFromPotential(double start_x, double start_y, double 
 
     std::vector<std::pair<float, float> > path;
     // 这个path的点只有在map中的位置信息(x,y)
-    if (!path_maker_->getPath(potential_array_, start_x, start_y, goal_x, goal_y, path)) {
+    if (!path_maker_->getPath(potential_array_, start_x, start_y, goal_x, goal_y, path)) {//getPath进入grid_path或gradient_path
         ROS_ERROR("NO PATH!");
         return false;
     }
@@ -377,7 +377,7 @@ bool GlobalPlanner::getPlanFromPotential(double start_x, double start_y, double 
     ros::Time plan_time = ros::Time::now();
     // 将path中每个点转换到world下，方向信息还没加入，这里统一设为零，然后依次存储到plan中
     for (int i = path.size() -1; i>=0; i--) {
-        std::pair<float, float> point = path[i];
+        std::pair<float, float> point = path[i];//pair数据结构
         // 把map的全局路径转换到world下
         double world_x, world_y;
         mapToWorld(point.first, point.second, world_x, world_y);

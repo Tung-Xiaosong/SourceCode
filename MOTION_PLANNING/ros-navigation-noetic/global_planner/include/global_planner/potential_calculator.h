@@ -50,7 +50,7 @@ class PotentialCalculator {
         virtual ~PotentialCalculator() {}
         virtual float calculatePotential(float* potential, unsigned char cost, int n, float prev_potential=-1){
             if(prev_potential < 0){
-                // get min of neighbors
+                // get min of neighbors获取周围邻居点的最小值
                 float min_h = std::min( potential[n - 1], potential[n + 1] ),
                       min_v = std::min( potential[n - nx_], potential[n + nx_]);
                 prev_potential = std::min(min_h, min_v);

@@ -879,7 +879,7 @@ namespace move_base {
       lock.unlock();
       ROS_DEBUG_NAMED("move_base","pointers swapped!");
 
-      if(!tc_->setPlan(*controller_plan_)){
+      if(!tc_->setPlan(*controller_plan_)){//进行局部规划,局部规划器拿到全局路径后会计算局部路径和速度命令
         // ABORT and SHUTDOWN COSTMAPS
         ROS_ERROR("Failed to pass global plan to the controller, aborting.");
         resetState();

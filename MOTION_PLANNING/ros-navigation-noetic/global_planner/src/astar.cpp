@@ -76,7 +76,7 @@ bool AStarExpansion::calculatePotentials(unsigned char* costs, double start_x, d
         if (i == goal_i)
             return true;
         // step 4.3 将代价最小点i周围点加入搜索队里并更新代价值, 即对前后左右四个点执行add函数
-        add(costs, potential, potential[i], i + 1, end_x, end_y);
+        add(costs, potential, potential[i], i + 1, end_x, end_y);//中心点的上下左右四个点进行add扩展操作
         add(costs, potential, potential[i], i - 1, end_x, end_y);
         add(costs, potential, potential[i], i + nx_, end_x, end_y);
         add(costs, potential, potential[i], i - nx_, end_x, end_y);
@@ -99,18 +99,18 @@ void AStarExpansion::add(unsigned char* costs, float* potential, float prev_pote
     // 忽略障碍物点
     if(costs[next_i]>=lethal_cost_ && !(unknown_ && costs[next_i]==costmap_2d::NO_INFORMATION))
         return;
-    // p_calc_->calculatePotential() 采用简单方法计算值为costs[next_i] + neutral_cost_+ prev_potentia  地图代价+单格距离代价(初始化为50)+之前路径代价 为G
-    potential[next_i] = p_calc_->calculatePotential(potential, costs[next_i] + neutral_cost_, next_i, prev_potential);
+    // p_calc_->calculatePotential() 采用简单方法计算值为costs[next_i] + neutral_cost_+ prev_potentia  地图代价+单格距离代价(初始化为50)+之前路径代价 为G   A*算法f=g+h
+    potential[next_i] = p_calc_->calculatePotential(potential, costs[next_i] + neutral_cost_, next_i, prev_potential);//这里也可以使用quadratic_calculator
     // 算出该点的x,y坐标
     int x = next_i % nx_, y = next_i / nx_;
-    // 注意这里计算的是曼哈顿距离不是欧几里得距离
-    float distance = abs(end_x - x) + abs(end_y - y);
+    // 注意这里计算的是曼哈顿距离不是欧几里得距离,如果是欧几里得距离,这里要开平方
+    float distance = abs(end_x - x) + abs(end_y - y);//计算h
 
     // potential[next_i]：    起始点到当前点的cost即g(n)
     // distance * neutral_cost_：   当前点到目的点的cost即h(n)。
     // f(n)=g(n)+h(n)：  计算完这两个cost后，加起来即为f(n)，将其存入队列中
     // 加入搜索向量
-    queue_.push_back(Index(next_i, potential[next_i] + distance * neutral_cost_));
+    queue_.push_back(Index(next_i, potential[next_i] + distance * neutral_cost_));//将f(n)push出去
     // 对加入的再进行堆排序， 把最小代价点放到front堆头queue_[0]
     std::push_heap(queue_.begin(), queue_.end(), greater1());
 }

@@ -88,7 +88,7 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             interpolate(path, 0, n-1);
             break;
         // 路径点方向先更新为路径方向，如果有的点方向变化很大，该点和终点之间的点的方向再被插值更新一次，起到平滑的作用
-        case FORWARDTHENINTERPOLATE:
+        case FORWARDTHENINTERPOLATE://推荐使用这个
             for(int i=0;i<n-1;i++){
                 setAngleBasedOnPositionDerivative(path, i);
             }
@@ -109,7 +109,7 @@ void OrientationFilter::processPath(const geometry_msgs::PoseStamped& start,
             break;
     }
 }
-// 根据位置计算两点之间的朝向
+//TODO:可以自己看看  根据位置计算两点之间的朝向
 void OrientationFilter::setAngleBasedOnPositionDerivative(std::vector<geometry_msgs::PoseStamped>& path, int index)
 {
   int index0 = std::max(0, index - window_size_);
@@ -124,7 +124,7 @@ void OrientationFilter::setAngleBasedOnPositionDerivative(std::vector<geometry_m
   set_angle(&path[index], angle);
 }
 
-// 角度插值函数
+//TODO:可以自己看看  角度插值函数
 void OrientationFilter::interpolate(std::vector<geometry_msgs::PoseStamped>& path,
                                     int start_index, int end_index)
 {

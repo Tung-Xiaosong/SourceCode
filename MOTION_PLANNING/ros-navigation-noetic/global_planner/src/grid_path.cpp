@@ -48,7 +48,7 @@ bool GridPath::getPath(float* potential, double start_x, double start_y, double 
 
     int start_index = getIndex(start_x, start_y);
 
-    // step 1.将目标点的(x,y)作为当前点加入path
+    // step 1.将目标点的(x,y)作为当前点加入path(回溯过程：从目标点到起始点)
     path.push_back(current);
     int c = 0;
     int ns = xs_ * ys_;
