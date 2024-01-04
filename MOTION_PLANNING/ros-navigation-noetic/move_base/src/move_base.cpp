@@ -58,7 +58,7 @@ namespace move_base {
     planner_plan_(NULL), latest_plan_(NULL), controller_plan_(NULL),
     runPlanner_(false), setup_(false), p_freq_change_(false), c_freq_change_(false), new_global_plan_(false) {
 
-    as_ = new MoveBaseActionServer(ros::NodeHandle(), "move_base", boost::bind(&MoveBase::executeCb, this, _1), false);
+    as_ = new MoveBaseActionServer(ros::NodeHandle(), "move_base", boost::bind(&MoveBase::executeCb, this, _1), false);//在rviz中下发导航点后，这里才会进入executeCb函数
 
     ros::NodeHandle private_nh("~");
     ros::NodeHandle nh;
@@ -172,7 +172,7 @@ namespace move_base {
     recovery_index_ = 0;
 
     //we're all set up now so we can start the action server
-    as_->start();
+    as_->start();//启动 MoveBaseActionServer，使其开始监听来自客户端的移动请求。如果没有start，rviz下发导航任务后，不会进行规划
 
     dsrv_ = new dynamic_reconfigure::Server<move_base::MoveBaseConfig>(ros::NodeHandle("~"));//动态参数服务器
     dynamic_reconfigure::Server<move_base::MoveBaseConfig>::CallbackType cb = boost::bind(&MoveBase::reconfigureCB, this, _1, _2);
