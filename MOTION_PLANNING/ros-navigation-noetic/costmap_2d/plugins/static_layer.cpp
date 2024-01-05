@@ -231,7 +231,7 @@ void StaticLayer::incomingMap(const nav_msgs::OccupancyGridConstPtr& new_map)//�
   map_received_ = true;
   has_updated_data_ = true;
 
-  // 如果first_map_only_标志位是打开的，关闭map订阅
+  // 如果 first_map_only_ 标志位是打开的，关闭map订阅
   if (first_map_only_)
   {
     ROS_INFO("Shutting down the map subscriber. first_map_only flag is on");
