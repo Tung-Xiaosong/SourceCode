@@ -466,7 +466,7 @@ AmclNode::AmclNode() :
   base_frame_id_ = stripSlash(base_frame_id_);
   global_frame_id_ = stripSlash(global_frame_id_);
 
-  // step 3: 从参数服务器中得到初始位姿和初始协方差
+  // step 4: 从参数服务器中得到初始位姿和初始协方差
   updatePoseFromServer();
 
   cloud_pub_interval.fromSec(1.0);
@@ -474,7 +474,7 @@ AmclNode::AmclNode() :
   tf_.reset(new tf2_ros::Buffer());
   tfl_.reset(new tf2_ros::TransformListener(*tf_));
 
-  // step 4 : 定义话题,订阅和发布
+  // step 5 : 定义话题,订阅和发布
   pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("amcl_pose", 2, true);
   particlecloud_pub_ = nh_.advertise<geometry_msgs::PoseArray>("particlecloud", 2, true);
   global_loc_srv_ = nh_.advertiseService("global_localization",
@@ -490,7 +490,7 @@ AmclNode::AmclNode() :
                                                              odom_frame_id_,
                                                              100,
                                                              nh_);
-  laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,
+  laser_scan_filter_->registerCallback(boost::bind(&AmclNode::laserReceived,//大部分算法流程实现
                                                    this, _1));
   initial_pose_sub_ = nh_.subscribe("initialpose", 2, &AmclNode::initialPoseReceived, this);
 
@@ -503,7 +503,7 @@ AmclNode::AmclNode() :
   }
   m_force_update = false;
 
-  // step 5: 参数动态配置
+  // step 6: 参数动态配置
   dsrv_ = new dynamic_reconfigure::Server<amcl::AMCLConfig>(ros::NodeHandle("~"));
   dynamic_reconfigure::Server<amcl::AMCLConfig>::CallbackType cb = boost::bind(&AmclNode::reconfigureCB, this, _1, _2);
   dsrv_->setCallback(cb);

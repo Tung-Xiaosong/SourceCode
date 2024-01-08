@@ -144,7 +144,7 @@ loadMapFromFile(nav_msgs::GetMap::Response* resp,
       // Apply thresholds to RGB means to determine occupancy values for
       // map.  Note that we invert the graphics-ordering of the pixels to
       // produce a map with cell (0,0) in the lower-left corner.
-      if(occ > occ_th)
+      if(occ > occ_th)//计算栅格占用阈值
         value = +100;
       else if(occ < free_th)
         value = 0;

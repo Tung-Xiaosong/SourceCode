@@ -207,7 +207,7 @@ class MapServer
       YAML::Parser parser(fin);
       YAML::Node doc;
       parser.GetNextDocument(doc);
-#endif
+#endif  //检查yaml文件中,是否有这些参数,如果没有,进行相应报错
       try {
         doc["resolution"] >> res;
       } catch (YAML::InvalidScalar &) {
