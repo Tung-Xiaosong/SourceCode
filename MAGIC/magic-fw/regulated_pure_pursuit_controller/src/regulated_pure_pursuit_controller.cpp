@@ -15,6 +15,7 @@ in_slope_region_(false),in_slow_region_(false),nav_type_(0),goal_max_speed_(0.0)
 base_link_to_car_front_dist_(0.28),slow_speed_max_(0.3),car_type_(0),chassis_linear_(0.0),chassis_angular_(0.0)
 { }    
 
+// virtual
 void RegulatedPurePursuitController::initialize(std::string name, tf::TransformListener* tf,
                                       costmap_2d::Costmap2DROS *costmap_ros)
 {
@@ -220,6 +221,7 @@ void RegulatedPurePursuitController::setAngleBasedOnPositionDerivative(std::vect
   }
 }
 
+// virtual
 bool RegulatedPurePursuitController::setPlan(const std::vector<geometry_msgs::PoseStamped>& orig_global_plan)
 {
   if(!initialized_)
@@ -267,6 +269,7 @@ const float chassis_angular,const float chassis_linear,const bool is_in_avoid_ob
   return true;
 }
 
+// virtual
 uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_msgs::PoseStamped& pose,
                                                   const geometry_msgs::TwistStamped& velocity,
                                                   geometry_msgs::TwistStamped &cmd_vel,
@@ -592,6 +595,7 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
     // }
   };
 
+// TODO start control
   //检查是否要后退
   if( frontHasObs(robot_pose) && shouldReversing(transformed_local_plan) && \
   std::hypot(carrot_pose.pose.position.x, carrot_pose.pose.position.y) < 2.0 && !is_in_narrow_region_) //dxs add is_in_narrow_region_
@@ -723,6 +727,7 @@ bool RegulatedPurePursuitController::setNewGoal()
   goal_dist_tol_ = goal_dist_tol_temp_;
 }
 
+// virtual
 bool RegulatedPurePursuitController::isGoalReached()
 {
   if (goal_reached_){

@@ -1,0 +1,26 @@
+<launch>
+  <arg default="00594a18-fb9a-11ed-ac4f-042b58098dc5/map" name="map_name" />
+  <arg default="/home/yhs/yhs-api/yhs-robot/dist/app/datas/$(arg map_name).yaml" name="map_file" />
+  <include file="$(find yhs_fw_can_control)/launch/yhs_fw_can_control_bringup_carto.launch" />
+
+  
+  <node args="$(arg map_file)" name="map_server" pkg="map_server" type="map_server" />
+
+  
+  <node args=" -configuration_directory $(find cartographer_ros)/configuration_files -configuration_basename dgt_001mini_loc.lua -load_state_filename /home/yhs/yhs-api/yhs-robot/dist/app/datas/$(arg map_name).pbstream " name="cartographer_node" output="screen" pkg="cartographer_ros" type="cartographer_node">
+    <remap from="scan" to="/scan" />
+    <remap from="imu" to="/imu_data" />
+    <remap from="odom" to="/robot_pose_ekf/ekf_odom" />
+    <remap from="/points2" to="/lslidar_point_cloud" />
+  </node>
+
+  <include file="$(find yhs_nav)/launch/teb_move_base.launch" />
+
+  
+  <arg default="/home/yhs/yhs-api/yhs-robot/logs/rosbag_file" name="bag_directory" />
+  <arg default="100" name="max_file_size" /> 
+  <arg default="/map" name="topics" /> 
+
+  
+  <node args="$(arg topics) --split --max-splits 0 --size=$(arg max_file_size) -o $(arg bag_directory)" name="rosbag_record" output="screen" pkg="rosbag" type="record" />
+</launch>

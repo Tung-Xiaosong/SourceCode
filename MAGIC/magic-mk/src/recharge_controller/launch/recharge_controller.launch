@@ -1,0 +1,7 @@
+<!---->
+
+<launch>
+  <!-- 启动recharge_controller节点 -->
+  <node name="recharge_controller" pkg="recharge_controller" type="recharge_controller_node" output="screen"/>
+  
+</launch>

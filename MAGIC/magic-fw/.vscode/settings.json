@@ -8,5 +8,10 @@
         "/opt/ros/noetic/lib/python3/dist-packages"
     ],
     "cmake.configureOnOpen": false,
-    "editor.inlineSuggest.showToolbar": "onHover"
+    "editor.inlineSuggest.showToolbar": "onHover",
+    "files.associations": {
+        "*.ipp": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp"
+    }
 }
