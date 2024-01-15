@@ -847,13 +847,13 @@ namespace move_base {
           distance_to_path_nearest_point_ = std::hypot(transformed_point.pose.position.x, transformed_point.pose.position.y);
 
           //偏离路径后速度后，速度和前视距离的限制
-          if(distance_to_path_nearest_point_ >= 0.23)
+          if(distance_to_path_nearest_point_ >= 0.23)//速度限制在0.5m/s
             is_in_avoid_obs_ = true;
 
           if(distance_to_path_nearest_point_ <= 0.15)
             distance_to_path_nearest_point_big_than_zero_dot_five_ = false;
 
-          if( ( fabs(start_index_point_angular) > 0.5 && distance_to_path_nearest_point_ > 0.5 ) || begin_add_start_index )
+          if( ( fabs(start_index_point_angular) > 0.5 /*输入点朝向和机器人朝向超过约30°*/&& distance_to_path_nearest_point_ > 0.5 /*机器人距离路径大于0.5*/) || begin_add_start_index )
           {
             begin_add_start_index = true;
             start_index += 8;
@@ -901,21 +901,21 @@ namespace move_base {
 
           for(int i = start_index; i < record_plan_->size(); i ++)
           {
-            planner_plan_->push_back(record_plan_->at(i));
+            planner_plan_->push_back(record_plan_->at(i));//at:用于按索引访问容器中的元素
           } 
 
           //手绘路径,路径点裁剪
           if(nav_type_ == 1)
           {
             std::vector<geometry_msgs::PoseStamped> temp;
-            temp.push_back(planner_plan_->front());
+            temp.push_back(planner_plan_->front());//front返回容器的第一个元素
 
             for(int i = 2; i < planner_plan_->size() - 1; i += 2)
             {
               temp.push_back(planner_plan_->at(i));
             }
 
-            temp.push_back(planner_plan_->back());
+            temp.push_back(planner_plan_->back());//front返回容器最后一个元素
 
             planner_plan_->clear();
             for(int i = 0; i < temp.size(); i ++)

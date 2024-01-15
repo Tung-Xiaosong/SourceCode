@@ -286,11 +286,10 @@ namespace recharge_controller_ns
 
           ROS_WARN("recharge failed!!!");
 
-          loop_rate.sleep()
+          sleep(2);
           goToTempPoint();
           //res.result = 0;
-          repeat ++;
-          break;
+        
         }
         
         loop_rate.sleep();
