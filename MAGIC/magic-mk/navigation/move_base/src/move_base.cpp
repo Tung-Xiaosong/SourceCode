@@ -957,7 +957,7 @@ namespace move_base {
           length += hypot(record_path_.poses[i].pose.position.x - record_path_.poses[i-1].pose.position.x,\
           record_path_.poses[i].pose.position.y - record_path_.poses[i-1].pose.position.y);
 
-          if(length > 4.0) //dxs 2.0
+          if(length > 2.0) //dxs 2.0
           {
             temp_goal = record_path_.poses[i];
             std::vector<geometry_msgs::Point> temp_foot_points;
