@@ -126,7 +126,7 @@ void TebOptimalPlanner::visualize()
 
 
 /*
- * registers custom vertices and edges in g2o framework
+ * registers custom vertices and edges in g2o framework 在g2o框架中注册自定义顶点和边
  */
 void TebOptimalPlanner::registerG2OTypes()
 {
@@ -155,12 +155,12 @@ void TebOptimalPlanner::registerG2OTypes()
 }
 
 /*
- * initialize g2o optimizer. Set solver settings here.
- * Return: pointer to new SparseOptimizer Object.
+ * initialize g2o optimizer. Set solver settings here.初始化g2o优化器。在此设置求解器设置。
+ * Return: pointer to new SparseOptimizer Object.返回：指向新 SparseOptimizer 对象的指针。
  */
 boost::shared_ptr<g2o::SparseOptimizer> TebOptimalPlanner::initOptimizer()
 {
-  // Call register_g2o_types once, even for multiple TebOptimalPlanner instances (thread-safe)
+  // Call register_g2o_types once, even for multiple TebOptimalPlanner instances (thread-safe)调用一次 register_g2o_types，即使对于多个 TebOptimalPlanner 实例也是如此（线程安全）
   static boost::once_flag flag = BOOST_ONCE_INIT;
   boost::call_once(&registerG2OTypes, flag);  
 

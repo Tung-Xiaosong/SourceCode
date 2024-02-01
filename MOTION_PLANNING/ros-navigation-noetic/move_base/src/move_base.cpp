@@ -172,7 +172,7 @@ namespace move_base {
     recovery_index_ = 0;
 
     //we're all set up now so we can start the action server
-    as_->start();//启动 MoveBaseActionServer，使其开始监听来自客户端的移动请求。如果没有start，rviz下发导航任务后，不会进行规划
+    as_->start();//启动 MoveBaseActionServer ，使其开始监听来自客户端的移动请求。如果没有start，rviz下发导航任务后，不会进行规划
 
     dsrv_ = new dynamic_reconfigure::Server<move_base::MoveBaseConfig>(ros::NodeHandle("~"));//动态参数服务器
     dynamic_reconfigure::Server<move_base::MoveBaseConfig>::CallbackType cb = boost::bind(&MoveBase::reconfigureCB, this, _1, _2);

@@ -1,0 +1,164 @@
+TebLocalPlannerROS:
+
+ odom_topic: /robot_pose_ekf/ekf_odom
+    
+ # Trajectory 轨迹参数
+  
+ teb_autosize: True # 优化期间允许改变轨迹的时域长度，也就是改变 dt_ref
+ dt_ref: 0.3  #(dt_ref是最优路径上的两个相邻姿态（即位置、速度、航向信息，可通过TEB可视化在rivz中看到）的默认距离。 
+              #此距离不固定，规划器自动根据速度大小调整这一距离，速度越大，相邻距离自然越大，较小的值理论上可提供更高精度。)
+ dt_hysteresis: 0.05 # **********
+ follow_dt_ref: 0.45 
+ follow_dt_hysteresis: 0.15
+ max_samples: 500
+ global_plan_overwrite_orientation: True   #覆盖全局路径中的临时局部路径点的朝向，有些全局规划器不考虑局部子目标的朝向，因此在这里校正。
+                                           #将未来一段的规划的姿态角的平均值作为估计的局部子目标的姿态。
+ allow_init_with_backwards_motion: False   #允许在开始时想后退来执行轨迹
+ max_global_plan_lookahead_dist: 6.0 # 最大向前看距离. 指定要进行优化的全局计划子集的最大长度 (累积欧几里得距离) 。
+                                     #然后，实际长度由本地成本图大小和此最大界限的逻辑结合确定。设置为零或负数以停用此限制。
+                                     #此距离 1.应随车辆最大速度的增大而增大 2.不应超过激光雷达等传感器的可靠测量范围 3. 不应超过局部代价地图的大小，即不能要求TEB对局部耗费地图以外的部分进行规划。
+ global_plan_viapoint_sep: 0.0 #如果为正，则脱离全局计划（路径跟踪模式）。该值决定了参考路径的分辨率(min。沿全局计划的每两个连续通过点之间的分离，如果为负值：禁用)。强度的调整详见参数weight_viapoint。
+                               #正数才启用。调整全局路径上选取的航迹点的间隔，应根据机器人的尺寸大小调整.
+                               #0.0局部路径更靠近障碍物，0.1局部路径更接近全局路径
+ global_plan_prune_distance: 1
+ exact_arc_length: False # 如果为真，规划器将在速度、加速度和转弯率计算中使用精确的弧长（->增加的cpu时间），否则将使用欧几里得近似。
+ feasibility_check_no_poses: 2 # 可行性检查是用于验证生成的路径是否可行、可通过的过程。它会对路径上的每个离散点进行检查，以确定该点是否满足一些约束条件，例如地图上的障碍物、机器人的运动限制等。
+                               # 如果某个离散点被判断为不可通过，那么该点就会被剔除或调整，以生成一个可行的路径。
+                               # 过大会限制机器人灵活性和通过性（窄道，弯道卡死）,但会提高安全性
+ publish_feedback: False      
+ control_look_ahead_poses: 1  #实现更加平滑和准确的路径跟踪。较小的值可能会导致路径跟踪时的较大偏差和振荡，而较大的值可能会导致路径跟踪时的延迟和不稳定性。
+    
+ # Robot 机器人参数
+         
+ max_vel_x: 0.5 #机器人最大x速度
+ follow_max_vel_x: 0.22
+ max_vel_x_backwards: 0.2 #机器人向后行驶时的最大绝对平移速度
+ max_vel_y: 0.0 #机器人最大y速度
+ max_vel_theta: 0.43 #机器人最大角速度
+ follow_max_vel_theta: 0.5
+ acc_lim_x: 0.1 #机器人最大x加速度
+ acc_lim_theta: 0.1 #机器人最大角加速度
+ follow_acc_lim_x: 0.2
+ follow_acc_lim_theta: 0.4
+
+ min_turning_radius: 0.3 # diff-drive robot (can turn on place!) 差速和其他！！！
+ wheelbase: 0.65                 # Wheelbase of our robot 驱动轴和转向轴之间的距离 差速没有这个！！！
+ cmd_angle_instead_rotvel: True # 是否将收到的角速度消息转换为操作上的角度变化。设置成True时，话题cmd_vel.angular.z内的数据是舵机角度。差速没有这个！！！
+
+ footprint_model:  # types: "point", "circular", "two_circles", "line", "polygon" 机器人机械足迹模型类型
+   type: "two_circles" # 阿克曼two_circles,差速circular
+   radius: 0.4 #此参数仅与类型“圆形”相关。它包含了圆的半径。圆的圆心位于机器人的旋转轴上。
+   line_start: [-0.6, 0.0] # for type "line" 此参数仅与类型“line”相关。它包含了线段的起始坐标。
+   line_end: [0.6, 0.0] # for type "line"
+   front_offset: 0.4 # for type "two_circles" 此参数仅与类型“two_cicles”相关。它描述了前圆的中心沿着机器人的x轴移动了多少。假设机器人的旋转轴位于[0,0]处。
+   front_radius: 0.2 # for type "two_circles" 此参数仅与类型“two_circles”相关。它包含了前部圆的半径。
+   rear_offset: 0.4 # for type "two_circles" 此参数仅与类型“two_circles”相关。它描述了后圆的中心沿着机器人的负x轴移动了多少。假设机器人的旋转轴位于[0,0]处。
+   rear_radius: 0.2 # 0.2 此参数仅与类型“two_circles”相关。它包含了后圆的半径。
+   vertices: [[0.8,0.3],[0.8,-0.3],[-0.8,-0.3],[-0.8,0.3]]  # for type "polygon" 差速没有这个！！！此参数仅与类型“多边形”相关。它包含多边形顶点的列表（每个顶点具有2d坐标）。多边形总是关闭的：不要在结尾重复第一个顶点。
+
+ # GoalTolerance 目标点容忍
+    
+ xy_goal_tolerance: 0.1
+ yaw_goal_tolerance: 0.1
+ free_goal_vel: False # 消除目标速度约束，使机器人能够以最大的速度到达目标
+ complete_global_plan: True
+    
+ # Obstacles 障碍物
+    
+ min_obstacle_dist: 0.75 # 该值还必须包括我们的机器人半径，因为footprint_mode设置为“点”.与障碍物的最小期望距离 # **********
+                         # 增大min_obstacle_dist可以防止机器人离墙太近，但是对于狭窄通道的情况，反而应该设置的很小。 
+                         # 可以增大机器人轮廓，但减小min_obs_dist，提高防撞性，又保证过窄通道
+ inflation_dist: 0.6 # 此膨胀只是降低通过这些区域的优先级，不应当用此距离迫使车辆远离障碍物。
+                     # 障碍物周边的缓冲区，零惩罚代价，缓冲区会导致规划器减速（应大于min_obstacle_dist才能生效）**********
+ include_costmap_obstacles: True #包含成本地图障碍物，必须是True
+ costmap_obstacles_behind_robot_dist: 1.5 # 限制在机器人后面进行规划时考虑到的被占用的本地成本图障碍
+ obstacle_poses_affected: 15 # 障碍物的位置附着在轨迹上最近的位置上，以减少计算量，但也考虑了一些邻居
+
+ dynamic_obstacle_inflation_dist: 0.6 #动态障碍物的膨胀范围
+ include_dynamic_obstacles: True
+
+ costmap_converter_plugin: ""
+ costmap_converter_spin_thread: True
+ costmap_converter_rate: 5
+
+ # Optimization 优化/权重
+    
+ no_inner_iterations: 5 #被外循环调用后内循环执行优化次数
+ no_outer_iterations: 4 #执行的外循环的优化次数
+ optimization_activate: True
+ optimization_verbose: False #图优化的过程是否显示，可以用于调试（终端会输出优化信息）
+ penalty_epsilon: 0.1 #为惩罚函数增加一个小的安全余量，以实现硬约束近似. 
+                      #如果选择过高的值，会影响最终的信息矩阵，可能会出现不收敛的情况
+                      #收敛是指优化算法在迭代过程中逐渐接近最优解，并最终停止迭代。然而，如果"penalty_epsilon"的值选择过高，即惩罚因子过大，可能会导致优化算法无法达到最优解或无法停止迭代。
+                      #这种情况下，优化算法可能会在迭代过程中陷入循环或震荡状态，无法找到满足收敛条件的解。
+                      #也就是说，优化算法无法找到一个解，使得目标函数的值达到最小或最大，并且无法满足停止迭代的条件。
+ obstacle_cost_exponent: 4
+ weight_max_vel_x: 2
+ weight_max_vel_theta: 1
+ weight_acc_lim_x: 1
+ weight_acc_lim_theta: 1
+ weight_kinematics_nh: 1000
+ weight_kinematics_forward_drive: 0 # 差速1000 阿克曼0 # 优化了迫使机器人只选择正向方向的权重。速度小重量（例如1.0)仍然允许向后行驶。1000左右的值几乎阻止向后驾驶（但不能保证）。**********
+ weight_kinematics_turning_radius: 1
+ weight_optimaltime: 1 # must be > 0  最优时间权重。提高至5时，车辆在直道上线速度明显加快，而且越大越能接近max_vel_x，并靠近路径边缘沿切线过弯。（值过大过障碍物时容易卡住）
+ weight_shortest_path: 0
+ weight_obstacle: 100 #优化权重以保持与障碍物的最小距离。可以增大至几百，让机器人提前转向，避免卡死
+ weight_inflation: 0.2
+ weight_dynamic_obstacle: 10 #满足与动态障碍物最小间距的优化权重
+ weight_dynamic_obstacle_inflation: 0.2
+ weight_viapoint: 5 #10 阿克曼5 差速50 # **********
+ weight_adapt_factor: 2
+
+ # Homotopy Class Planner
+
+ enable_homotopy_class_planning: False
+ enable_multithreading: True
+ max_number_classes: 4
+ selection_cost_hysteresis: 1.0
+ selection_prefer_initial_plan: 0.9
+ selection_obst_cost_scale: 100.0
+ selection_alternative_time_cost: False
+ 
+ roadmap_graph_no_samples: 15
+ roadmap_graph_area_width: 5
+ roadmap_graph_area_length_scale: 1.0
+ h_signature_prescaler: 0.5
+ h_signature_threshold: 0.1
+ obstacle_heading_threshold: 0.45
+ switching_blocking_period: 0.0
+ viapoints_all_candidates: True
+ delete_detours_backwards: True
+ max_ratio_detours_duration_best_duration: 6.0 # **********
+ visualize_hc_graph: False #为true，在rviz里可看到优化使用的graph
+ visualize_with_time_as_z_axis_scale: False #作用是将时间作为Z轴的缩放因子，以在可视化中反映时间的变化。
+                                            #通过将时间作为Z轴的缩放因子，可以使得路径或轨迹在可视化中具有时间的变化效果。
+
+# Recovery 恢复行为 TebLocalPlannerROS::configureBackupModes
+ 
+ shrink_horizon_backup: false # 差速true #当规划器检测到系统异常，允许缩小时域规划范围,TEB将以更近的点作为规划目标，尝试重新规划出可行路径;
+ shrink_horizon_min_duration: 10  # 如果检测到不可行的轨迹，激活缩小的水平线后备模式，本参数为其最短持续时间。
+ oscillation_recovery: false # 差速true 如果路径跟踪控制算法检测到机器人出现路径震荡的情况，它将尝试通过特定的策略来恢复机器人的路径跟踪。 #尝试检测和解决振荡
+ oscillation_v_eps: 0.1 #(0,1)内的 normalized 线速度的平均值的阈值，判断机器人是否运动异常
+ oscillation_omega_eps: 0.1 #(0,1)内的 normalized 角速度的平均值，判断机器人是否运动异常
+ oscillation_recovery_min_duration: 10
+ oscillation_filter_duration: 10
+
+
+
+### 提高性能的调试
+# 使用Costmap Converter
+# 减小no_outer_iterations no_inner_iterations
+# 减小局部地图大小
+# 增大dt_ref obstacle_poses_affected
+# 关闭多路径并行规划 (效果非常显著)
+# 降低 max_lookahead_distance (一般)
+
+### 如何提高线速度
+# 增大max_vel_x, dt_ref, weight_max_vel_x。
+# 如果还不见效就增大 weight_optimaltime
+# weight_optimaltime提高最大速度的效果比dt_ref更好
+
+### 尽量避免后退
+# 应当显著加大weight_kinematics_forward_drive，1000
+# 但是权重太大又会降低收敛速度(这对任何权重都是如此) 。
+# 将 max_vel_x_backwards减少到0(或0.02)，至少减少到与参数penalty_epsilon相同。
