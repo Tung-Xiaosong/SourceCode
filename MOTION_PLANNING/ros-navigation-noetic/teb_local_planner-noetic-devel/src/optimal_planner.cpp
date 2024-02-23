@@ -204,13 +204,14 @@ bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_out
       teb_.autoResize(cfg_->trajectory.dt_ref, cfg_->trajectory.dt_hysteresis, cfg_->trajectory.min_samples, cfg_->trajectory.max_samples, fast_mode);
 
     }
-
+    // step xx 构建超图
     success = buildGraph(weight_multiplier);
     if (!success) 
     {
         clearGraph();
         return false;
     }
+    // step xx 开始图优化
     success = optimizeGraph(iterations_innerloop, false);
     if (!success) 
     {
@@ -218,7 +219,7 @@ bool TebOptimalPlanner::optimizeTEB(int iterations_innerloop, int iterations_out
         return false;
     }
     optimized_ = true;
-    
+    // step xx compute_cost_afterwards 默认false
     if (compute_cost_afterwards && i==iterations_outerloop-1) // compute cost vec only in the last iteration
       computeCurrentCost(obst_cost_scale, viapoint_cost_scale, alternative_time_cost);
       
@@ -339,25 +340,25 @@ bool TebOptimalPlanner::buildGraph(double weight_multiplier)
   else
     AddEdgesObstacles(weight_multiplier);
 
-  if (cfg_->obstacles.include_dynamic_obstacles)
+  if (cfg_->obstacles.include_dynamic_obstacles)  // 添加动态障碍物约束
     AddEdgesDynamicObstacles();
   
-  AddEdgesViaPoints();
+  AddEdgesViaPoints();  // 通过点约束
   
-  AddEdgesVelocity();
+  AddEdgesVelocity(); // 速度约束
   
-  AddEdgesAcceleration();
+  AddEdgesAcceleration(); // 加速度约束
 
-  AddEdgesTimeOptimal();	
+  AddEdgesTimeOptimal();  // 时间约束
 
-  AddEdgesShortestPath();
+  AddEdgesShortestPath(); // 最短路径约束
   
   if (cfg_->robot.min_turning_radius == 0 || cfg_->optim.weight_kinematics_turning_radius == 0)
-    AddEdgesKinematicsDiffDrive(); // we have a differential drive robot
+    AddEdgesKinematicsDiffDrive(); // we have a differential drive robot 差速机器人运动学约束
   else
-    AddEdgesKinematicsCarlike(); // we have a carlike robot since the turning radius is bounded from below.
+    AddEdgesKinematicsCarlike(); // we have a carlike robot since the turning radius is bounded from below. 类汽车机器人运动学约束, 该类型受旋转半径的约束
 
-  AddEdgesPreferRotDir();
+  AddEdgesPreferRotDir(); // 朝向约束
 
   if (cfg_->optim.weight_velocity_obstacle_ratio > 0)
     AddEdgesVelocityObstacleRatio();
@@ -719,7 +720,7 @@ void TebOptimalPlanner::AddEdgesViaPoints()
 
 void TebOptimalPlanner::AddEdgesVelocity()
 {
-  if (cfg_->robot.max_vel_y == 0) // non-holonomic robot
+  if (cfg_->robot.max_vel_y == 0) // non-holonomic robot 不能横着走
   {
     if ( cfg_->optim.weight_max_vel_x==0 && cfg_->optim.weight_max_vel_theta==0)
       return; // if weight equals zero skip adding edges!
