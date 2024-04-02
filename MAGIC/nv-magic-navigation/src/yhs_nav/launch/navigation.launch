@@ -1,0 +1,88 @@
+<!--导航launch文件-->
+<launch> 
+
+  <!-- 参数加载 -->
+  <rosparam file="/home/yhs/yhs-robot/configures/yhs_robot_cfg.yaml" command="load" />
+  <rosparam file="/home/yhs/catkin_ws/src/yhs_nav/param/yhs_robot_nav_cfg.yaml" command="load" />
+
+
+  <!-- 加载地图节点 -->
+  <arg name="map_name" default="c1"/>
+  <arg name="map_file" default="$(find yhs_nav)/map/$(arg map_name).yaml"/>
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg map_file)" />
+  
+  <!-- 底盘控制节点 -->
+  <node pkg="yhs_can_control" type="yhs_can_control_node" name="yhs_can_control_node" output="screen">
+  </node>
+  
+  <!-- TF发布节点 -->
+  <node pkg="sensor_tf" type="sensor_tf_node" name="sensor_tf_node" output="screen">
+  </node>
+  
+  <!-- IMU节点 -->
+  <node pkg="serial_imu" type="serial_imu" name="HI226"  output="screen" />
+  
+  <!-- 相机1节点 -->
+  <node pkg="ascamera_listener"  type="ascamera_listener_node" name="ascamera_hp60c_ln_1" respawn="true" output="screen">
+  </node>
+  
+  <!-- 相机1转scan节点 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_2">
+    <remap from="cloud_in" to="/ascamera_hp60c_ln_1/depth/points"/>
+    <remap from="scan" to="scan1"/>
+  </node>
+  
+  <!-- 相机2节点 -->
+  <node pkg="ascamera_listener"  type="ascamera_listener_node" name="ascamera_hp60c_ln_2" respawn="true" output="screen">
+  </node>
+  
+  <!-- 相机2转scan节点 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_3">
+    <remap from="cloud_in" to="/ascamera_hp60c_ln_2/depth/points"/>
+    <remap from="scan" to="scan2"/>
+  </node>
+  
+  <!-- 激光雷达节点 -->
+  <node pkg="rslidar_sdk" name="rslidar_sdk_node" type="rslidar_sdk_node" output="screen">
+    <param name="config_path" value=""/>
+  </node>
+  
+  <!-- 激光雷达转scan节点 -->
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_1">
+    <remap from="cloud_in" to="/rslidar_points"/>
+    <remap from="scan" to="scan"/>
+  </node>
+  
+  <!-- 去畸变节点 -->
+  <node pkg="cloud_undistortion" type="cloud_undistortion" name="cloud_undistortion_node" respawn="true">
+  </node>
+  
+  <!-- 速度平滑节点 -->
+  <node pkg="nodelet" type="nodelet" name="nodelet_manager" args="manager" respawn="true" output="screen"/>
+  <node pkg="nodelet" type="nodelet" name="velocity_smoother" args="load yocs_velocity_smoother/VelocitySmootherNodelet nodelet_manager" output="screen"/>
+  
+  <!-- 后端交互节点 -->
+  <node pkg="ros_backend_interface" type="ros_backend_interface" name="ros_backend_interface_node" output="screen">
+  </node>
+  
+  <!-- 回充节点 -->
+  <node pkg="recharge_controller" type="recharge_controller_node" name="recharge_controller"  output="screen"/>
+
+  <!-- 定位节点 -->
+  <node name="cartographer_node" pkg="cartographer_ros"
+    type="cartographer_node" args="
+    -configuration_directory $(find cartographer_ros)/configuration_files
+    -configuration_basename dgt_001mini_loc.lua
+    -load_state_filename $(find yhs_nav)/map/$(arg map_name).pbstream"
+    output="screen">
+
+    <remap from="scan" to="/scan" />
+    <remap from="imu" to="/imu_data" />
+    <remap from="odom" to="/odom" />
+    <remap from="/points2" to="/rslidar_points" />
+  </node>
+
+  <!-- 导航节点 -->
+  <node pkg="move_base" type="move_base" respawn="true" name="move_base" output="screen" clear_params="true"/>
+
+</launch>

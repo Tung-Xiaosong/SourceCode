@@ -1,0 +1,19 @@
+<!--调试使用-->
+
+<launch>
+
+  <rosparam file="/home/yhs/catkin_ws/src/yhs_nav/param/yhs_robot_nav_cfg.yaml" command="load" />
+  
+  <node pkg="ascamera_listener"  type="ascamera_listener_node" name="ascamera_hp60c_ln_1" respawn="true" output="screen">
+  </node>
+  
+  <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan_2" output="screen">
+    <remap from="cloud_in" to="/ascamera_hp60c_ln_1/depth/points"/>
+    <remap from="scan" to="scan1"/>
+  </node>
+  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_camera_1"
+    args="0.25 0.0 0.47 0.0 0.3 0.0 base_link ascamera_hp60c_ln_1" />
+
+    
+</launch>

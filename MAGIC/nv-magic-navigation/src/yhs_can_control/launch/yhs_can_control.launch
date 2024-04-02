@@ -1,0 +1,12 @@
+<!--调试使用-->
+<launch>
+
+    <rosparam file="/home/yhs/new/src/yhs_nav/param/yhs_robot_nav_cfg.yaml" command="load" />
+    
+    <node pkg="yhs_can_control" type="yhs_can_control_node" name="yhs_can_control_node" output="screen">
+    </node>
+    
+    <node pkg="tf2_ros" type="static_transform_publisher" name="ul_link_to_base_link" args="0.0 0.0 0.57 0 0 0 base_link ul_link" />
+
+</launch>
+
