@@ -533,7 +533,7 @@ namespace ros_backend_interface {
     }
 
     void RosBackendInterface::markerArray_CB(const visualization_msgs::MarkerArray::ConstPtr& msg){
-
+init_pose_is_success_ = true;//dxs add
       std::lock_guard<std::mutex> lock(mutex_);
       if(msg->markers[4].points.size() > 0)
       {
@@ -683,7 +683,10 @@ namespace ros_backend_interface {
         graph_path.header.frame_id = "map";
         graph_path.header.stamp = ros::Time::now();
         record_path_pub_.publish(graph_path);
-
+        ROS_WARN("[ros_backend_interface] path first point: x: %f, y: %f \n path last point: x: %f, y: %f \n", \
+          graph_path.poses[0].pose.position.x, graph_path.poses[0].pose.position.y,
+          graph_path.poses[graph_path.poses.size() -1].pose.position.x, graph_path.poses[graph_path.poses.size() -1].pose.position.y);//dxs
+        
         goal_msg.target_pose.header.stamp = ros::Time::now();
         goal_msg.target_pose.pose =graph_path.poses[graph_path.poses.size() -1].pose;
         

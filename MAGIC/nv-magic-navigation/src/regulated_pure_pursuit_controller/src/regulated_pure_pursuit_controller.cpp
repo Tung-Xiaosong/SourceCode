@@ -104,13 +104,8 @@ void RegulatedPurePursuitController::initParams(ros::NodeHandle& nh){
   nh.param<double>("direction_difference_sum_down_not_free_nav", direction_difference_sum_down_not_free_nav_, 0.2);
   nh.param<double>("direction_difference_sum_up_not_free_nav", direction_difference_sum_up_not_free_nav_, 0.25);
   nh.param<double>("direction_difference_sum_keep_time", direction_difference_sum_keep_time_, 0.2);
-
-  nh.param<double>("control_frequency", control_frequency_, 20);
-  control_duration_ = 1.0 / control_frequency_;
-
-  double transform_tolerance;
-  nh.param<double>("transform_tolerance", transform_tolerance, 0.1);
-  transform_tolerance_ = ros::Duration(transform_tolerance);
+  
+  nh.param<double>("slow_speed_angular", slow_speed_angular_, 1.05);
 
   //Ddynamic Reconfigure
 
@@ -151,6 +146,8 @@ void RegulatedPurePursuitController::initParams(ros::NodeHandle& nh){
   ddr_->registerVariable<double>("direction_difference_sum_down_not_free_nav", &this->direction_difference_sum_down_not_free_nav_, "", 0.0, 4.0);
   ddr_->registerVariable<double>("direction_difference_sum_up_not_free_nav", &this->direction_difference_sum_up_not_free_nav_, "", 0.0, 4.0);
   ddr_->registerVariable<double>("direction_difference_sum_keep_time", &this->direction_difference_sum_keep_time_, "", 0.0, 4.0);
+  
+  ddr_->registerVariable<double>("slow_speed_angular", &this->slow_speed_angular_, "", 0.0, 3.14);
 
   ddr_->publishServicesTopics();
   
@@ -409,12 +406,40 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
     return true;
   }
   
+  //获取前视距离点
+  geometry_msgs::PoseStamped carrot_pose_path;
+  static bool use_teb_path = false;
+  {
+    carrot_pose_path = getLookAheadPoint(1.5, transformed_local_plan);
+    
+    double angular_near = std::atan2(carrot_pose_path.pose.position.y, carrot_pose_path.pose.position.x);
+    
+    ROS_INFO("use_teb_path angular_near  %.3f   %d",angular_near,is_in_avoid_obs_);
+    
+    if(fabs(angular_near) > 0.75 || use_teb_path)
+    {
+      use_teb_path = true;
+      if(fabs(angular_near) < 0.3)
+      {
+        use_teb_path = false;
+        ROS_INFO("use_teb_path done !!!");
+      }  
+    }
+    
+  }
+  
   
   //ackman底盘，手绘或者录制路径，非绕障情况，且距离目标点大于to_goal_dist_m
-  if(/*!is_in_avoid_obs_ &&*/ robot_to_goal_dist > to_goal_dist_) 
+  if(!is_in_avoid_obs_ && !use_teb_path && robot_to_goal_dist > to_goal_dist_) 
   {
     teb_local_plan.clear();
     teb_local_plan = transformed_local_plan;
+    ROS_WARN("use_record_path!!!");
+  }
+  else
+  {
+    transformed_local_plan.clear();
+    transformed_local_plan = teb_local_plan;
   }
 
   nav_msgs::Path local_path;
@@ -476,7 +501,7 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
   //   if(value_num > 0) direction_difference_sum /= value_num;
   // }
   
-  if(global_plan_.size() > 10)
+  if(global_plan_.size() > 10) // 计算全局路径中某一段路径的平均曲率半径
   {
     for (size_t i = 0; i < global_plan_.size() - 9; i += 9) {
       const auto& prev_point = global_plan_[i];
@@ -499,11 +524,12 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
       }
     }
 
-    // Calculate average curvature radius
+    // Calculate average curvature radius 计算平均曲率半径
     if(value_num > 0) direction_difference_sum /= value_num;
     
-    // if( direction_difference_sum >= direction_difference_sum_up_)
-    //   ROS_WARN("Average curvature radius: %f", direction_difference_sum);
+    // if( direction_difference_sum >= direction_difference_sum_up_not_free_nav_)
+    //   ROS_INFO("Average curvature radius: %f, sum_up_: %f", direction_difference_sum, direction_difference_sum_up_);//dxs
+
   }
   //路径弯曲程度对速度的影响
   static bool direction_difference_sum_is_big_than_zero_dot_five = false;
@@ -523,6 +549,7 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
     if(direction_difference_sum <= direction_difference_sum_up_temp)
     {
       is_small_than_zero_dot_five_time = ros::Time::now();
+      // std::cout<< direction_difference_sum << "-----------" << direction_difference_sum_up_temp << std::endl;//dxs
     } 
 
     if( direction_difference_sum >= direction_difference_sum_down_temp)
@@ -531,7 +558,7 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
     }
 
     //direction_difference_sum大于keep_time秒后限制速度
-    double keep_time = direction_difference_sum_keep_time_;
+    double keep_time = direction_difference_sum_keep_time_; // 1s
     if(linear_vel >= 1.0) 
       keep_time = 0.5;
     if( (ros::Time::now() - is_small_than_zero_dot_five_time).toSec() > keep_time || direction_difference_sum_is_big_than_zero_dot_five )
@@ -767,7 +794,7 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
     geometry_msgs::PoseStamped carrot_pose_ackman = getLookAheadPoint(0.23, transformed_local_plan);
     
     std::vector<geometry_msgs::PoseStamped> carrot_pose_ackman_vec;
-    for (int i = 2; i < teb_local_plan.size() -2; i ++) //dxs change 1 手绘路径从曲线到直线，小车方向调整次数多
+    for (int i = 1; i < teb_local_plan.size() - 1; i ++) //dxs change 1 手绘路径从曲线到直线，小车方向调整次数多
     {
       double x_pre = teb_local_plan[i - 1].pose.position.x;
       double x_cur = teb_local_plan[i].pose.position.x;
@@ -801,15 +828,10 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
       
       if(carrot_pose_ackman_vec[0].pose.position.x > goal_local.pose.position.x)
       {
-        linear_vel = 0.2;
+        linear_vel = 0.2;//dxs change 0.2
       }
-    
-      // if(linear_vel > 0.5)
-      // {
-      //   linear_vel = 0.5;
-      // }
       
-      if(sign < 0) linear_vel = -0.2;
+      if(sign < 0) linear_vel = -0.2;//dxs change -0.2
       
       //角度
       carrot_pose_angle = carrot_pose_ackman_yaw * 8;
@@ -827,6 +849,27 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
       if(sign > 0)
       {
         carrot_pose_angle = std::atan2(carrot_pose.pose.position.y, carrot_pose.pose.position.x);
+        
+        //减速调整
+        {
+          static bool self_rote_ackman = false;
+          if( (fabs(carrot_pose_angle) > slow_speed_angular_ && fabs(carrot_pose_angle) < 1.57) || self_rote_ackman )
+          {
+            self_rote_ackman = true;
+            // geometry_msgs::PoseStamped carrot_pose_near = getLookAheadPoint(0.2, teb_local_plan);
+            // double angular_near = std::atan2(carrot_pose_near.pose.position.y, carrot_pose_near.pose.position.x);
+          
+            if(fabs(carrot_pose_angle) < 0.3)
+            {
+              self_rote_ackman = false;
+              ROS_WARN("slow speed done !!!");
+            }
+            else
+            {
+              if(linear_vel > 0.2) linear_vel = 0.2;
+            }
+          }
+        }
 
         //设置线速度
         applyConstraints(local_path, linear_vel,robot_cur_speed);
@@ -835,15 +878,15 @@ uint32_t RegulatedPurePursuitController::computeVelocityCommands(const geometry_
       else
       {
         carrot_pose_angle = - tf::getYaw(carrot_pose.pose.orientation) * 8;
-        linear_vel = -0.2;//
+        linear_vel = -0.2;//dxs change -0.2
       }
     }
     angular_vel = clamp(carrot_pose_angle, -max_angular_vel_, max_angular_vel_);
     
-    if( frontHasObs(robot_pose, angular_vel) )
-    {
-      if(linear_vel > 0.2) linear_vel = 0.2;
-    }
+    // if( frontHasObs(robot_pose, angular_vel) )
+    // {
+    //   if(linear_vel > 0.2) linear_vel = 0.2;//dxs change 0.2
+    // }
   } 
 
   bool start_back_2s = false;
@@ -934,7 +977,6 @@ bool RegulatedPurePursuitController::isGoalReached()
 {
   if (goal_reached_){
     ROS_INFO("[RegulatedPurePursuitController] Goal Reached!");
-
     goal_dist_tol_ = goal_dist_tol_temp_;
     return true;
   }

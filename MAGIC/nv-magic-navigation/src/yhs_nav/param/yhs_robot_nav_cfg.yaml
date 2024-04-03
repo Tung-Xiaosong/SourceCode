@@ -139,7 +139,7 @@ pointcloud_to_laserscan_1:
   angle_max: 3.14 # M_PI/2
   angle_increment: 0.0087 # M_PI/360.0
   scan_time: 0.3333
-  range_min: 0.3
+  range_min: 0.5 #dxs change 0.3
   range_max: 50.0
   use_inf: true
   inf_epsilon: 1.0
@@ -222,8 +222,8 @@ move_base:
   clear_big_than_zero_dot_five: 0.15
   to_nearest_point_angular_: 0.5
   to_nearest_point_distance_: 0.5
-  inc_start_index: 8
-  inc_record_path_start_index: 3
+  inc_start_index: 8          #方向过大，往前增加    
+  inc_record_path_start_index: 5  #阿克曼底盘 往前增加 20
   is_in_avoid_obs_distance: 0.3
   path_avoid_obs_length: 2.0
 
@@ -304,7 +304,7 @@ move_base:
       laser_scan_sensor: {data_type: LaserScan, topic: scan, marking: true,inf_is_valid: false, clearing: true}
       laser_scan_sensor_1: {data_type: LaserScan, topic: scan1, marking: true,inf_is_valid: false, clearing: true}
       laser_scan_sensor_2: {data_type: LaserScan, topic: scan2, marking: true,inf_is_valid: false, clearing: true}
-      laser_scan_sensor_3: {data_type: LaserScan, topic: scan3, marking: true,inf_is_valid: false, clearing: true}
+      # laser_scan_sensor_3: {data_type: LaserScan, topic: scan3, marking: true,inf_is_valid: false, clearing: true}
         
         
         
@@ -448,14 +448,16 @@ move_base:
     goal_dist_tol: 0.05
     goal_yaw_tol: 0.08
     
-    goal_ackman_dist_tol: 0.15
+    goal_ackman_dist_tol: 0.15 # 阿克曼底盘到点误差
     goal_ackman_yaw_tol: 0.18
     
     to_goal_dist: 1.2
     direction_difference_sum_down: 0.006  #0.2
-    direction_difference_sum_up: 0.012   #0.25
+    direction_difference_sum_up: 0.012 #0.025 #dxs change 0.012   #0.25 # 自由导航
     direction_difference_sum_down_not_free_nav: 0.016
-    direction_difference_sum_up_not_free_nav: 0.02
+    direction_difference_sum_up_not_free_nav: 0.03 #dxs 0.02 # 手绘路径直线导航，前视点变化导致速度变化，增大该值 # 跟线导航
     direction_difference_sum_keep_time: 1.0
+    
+    slow_speed_angular: 1.02
   
   

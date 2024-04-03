@@ -322,6 +322,9 @@ public:
     //原地旋转阈值
     double self_rotate_angular_;
     
+    //阿克曼减速角度阈值
+    double slow_speed_angular_;
+    
     //放置teb路径
     std::vector<geometry_msgs::PoseStamped> teb_plan_;
 

@@ -480,8 +480,10 @@ namespace move_base {
   void MoveBase::receive_path_callback(const nav_msgs::Path::ConstPtr &msg) {
 
     ROS_INFO("Recive grah or record path.");
-
     record_path_ = *msg;
+    ROS_WARN("[move_base] receive path first point: x: %f, y: %f \n path last point: x: %f, y: %f \n", \
+      record_path_.poses[0].pose.position.x, record_path_.poses[0].pose.position.y,
+      record_path_.poses[record_path_.poses.size() - 1].pose.position.x, record_path_.poses[record_path_.poses.size() - 1].pose.position.y);//dxs
 
     record_plan_->clear();
     for(int i = 0 ; i < record_path_.poses.size(); i ++)
@@ -915,6 +917,8 @@ namespace move_base {
 
             if(checkPointInObs(record_path_.poses[i].pose))
             { 
+            
+              ROS_WARN("has_obs_in_path_ = true");
               has_obs_in_path_ = true;
               break;
             }
@@ -956,6 +960,9 @@ namespace move_base {
       }
     
       bool gotPlan = true;
+      
+//      ROS_WARN("qqqqq   distance_to_path_nearest_point_   %f    %d",distance_to_path_nearest_point_,distance_to_path_nearest_point_big_than_zero_dot_five_);
+
 
       //自由导航
       if(nav_type_ == 0)
@@ -994,11 +1001,12 @@ namespace move_base {
       //已经处于绕障情况下，而且距离机器人最近的路径点上没有障碍物
       else if(distance_to_path_nearest_point_ > is_in_avoid_obs_distance_ || distance_to_path_nearest_point_big_than_zero_dot_five_)
       {
-//        ROS_WARN("distance_to_path_nearest_point_   %f    %d",distance_to_path_nearest_point_,distance_to_path_nearest_point_big_than_zero_dot_five_);
+        ROS_WARN("distance_to_path_nearest_point_   %f    %d",distance_to_path_nearest_point_,distance_to_path_nearest_point_big_than_zero_dot_five_);
         distance_to_path_nearest_point_big_than_zero_dot_five_ = true;
         
-        int front_add = inc_start_index_;
-        if(nav_type_ == 2) front_add = inc_record_path_start_index_;
+        // int front_add = inc_start_index_;
+        // if(nav_type_ == 2) 
+        int front_add = inc_record_path_start_index_;
         
         if( nearest_index_ + front_add >= record_path_.poses.size() )
         {
@@ -1011,6 +1019,7 @@ namespace move_base {
         temp_goal.pose.orientation = planner_plan_->front().pose.orientation;//dxs add 临时目标点方向改为机器人当前方向，避免左右震荡
         gotPlan = n.ok() && makePlan(temp_goal, *planner_plan_);
         is_slow_speed_ = true;
+        is_in_avoid_obs_ = true;
       }
       else
       //录制或者手绘路径，停障
